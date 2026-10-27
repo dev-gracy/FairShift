@@ -135,21 +135,22 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # ---------------------------------------------------------------------------
-# API routers (versioned under /api/v1)
 # ---------------------------------------------------------------------------
-API_PREFIX = "/api/v1"
-
-app.include_router(auth.router, prefix=API_PREFIX)
-app.include_router(shifts.router, prefix=API_PREFIX)
-app.include_router(reports.router, prefix=API_PREFIX)
-app.include_router(dashboard.router, prefix=API_PREFIX)
-app.include_router(config_routes.router, prefix=API_PREFIX)
+# API routers (versioned under /api/v1 and /v1 for serverless path stripping)
+# ---------------------------------------------------------------------------
+for prefix in ["/api/v1", "/v1"]:
+    app.include_router(auth.router, prefix=prefix)
+    app.include_router(shifts.router, prefix=prefix)
+    app.include_router(reports.router, prefix=prefix)
+    app.include_router(dashboard.router, prefix=prefix)
+    app.include_router(config_routes.router, prefix=prefix)
 
 
 # ---------------------------------------------------------------------------
-# Health check — required for Cloud Run readiness probe
+# Health check — required for Cloud Run & Vercel readiness probe
 # ---------------------------------------------------------------------------
 @app.get("/health", tags=["ops"])
+@app.get("/api/health", tags=["ops"])
 def health():
     return {"status": "ok", "service": "fairshift", "version": "1.0.0"}
 
