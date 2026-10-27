@@ -138,18 +138,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 @app.exception_handler(StarletteHTTPException)
 async def custom_404_handler(request: Request, exc: StarletteHTTPException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "detail": exc.detail,
-            "url_path": request.url.path,
-            "scope_path": request.scope.get("path"),
-            "scope_raw_path": str(request.scope.get("raw_path")),
-            "scope_root_path": request.scope.get("root_path"),
-            "query_string": request.scope.get("query_string", b"").decode("latin1"),
-            "headers": dict(request.headers),
-        }
-    )
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
 
 
 
