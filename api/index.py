@@ -12,6 +12,7 @@ for p in [backend_dir, parent_dir]:
 
 from app.main import app as base_app
 
+
 class VercelPathMiddleware:
     """Restores the true requested path from Vercel's headers or rewrite query parameter."""
     def __init__(self, asgi_app):
