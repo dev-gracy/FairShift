@@ -24,7 +24,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
@@ -155,15 +155,56 @@ def health():
 
 
 # ---------------------------------------------------------------------------
-# Static files — serve the frontend
-# Must be mounted AFTER API routes to avoid catch-all conflicts
+# Static files & portal routes
 # ---------------------------------------------------------------------------
 _FRONTEND_CANDIDATES = [
     os.path.join(os.path.dirname(__file__), "..", "..", "frontend"),
+    os.path.join(os.path.dirname(__file__), "..", "..", "public"),
     os.path.join(os.path.dirname(__file__), "..", "frontend"),
+    os.path.join(os.path.dirname(__file__), "..", "public"),
     os.path.join(os.getcwd(), "frontend"),
+    os.path.join(os.getcwd(), "public"),
     os.path.join(os.getcwd(), "..", "frontend"),
+    os.path.join(os.getcwd(), "..", "public"),
 ]
+
+
+def _find_frontend_file(subpath: str):
+    for candidate in _FRONTEND_CANDIDATES:
+        full_path = os.path.abspath(os.path.join(candidate, subpath))
+        if os.path.isfile(full_path):
+            return full_path
+    return None
+
+
+@app.get("/", include_in_schema=False)
+@app.get("/index.html", include_in_schema=False)
+def serve_index():
+    path = _find_frontend_file("index.html")
+    if path:
+        return FileResponse(path)
+    return HTMLResponse("<h1>FairShift Platform</h1><p>Frontend loading...</p>")
+
+
+@app.get("/worker", include_in_schema=False)
+@app.get("/worker/", include_in_schema=False)
+def serve_worker_portal():
+    path = _find_frontend_file(os.path.join("worker", "index.html"))
+    if path:
+        return FileResponse(path)
+    return HTMLResponse("<h1>Worker Portal</h1>")
+
+
+@app.get("/admin", include_in_schema=False)
+@app.get("/admin/", include_in_schema=False)
+def serve_admin_portal():
+    path = _find_frontend_file(os.path.join("admin", "index.html"))
+    if path:
+        return FileResponse(path)
+    return HTMLResponse("<h1>Admin Dashboard</h1>")
+
+
 _FRONTEND_DIR = next((d for d in _FRONTEND_CANDIDATES if os.path.isdir(d)), None)
 if _FRONTEND_DIR:
     app.mount("/", StaticFiles(directory=_FRONTEND_DIR, html=True), name="frontend")
+

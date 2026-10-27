@@ -1,0 +1,67 @@
+{
+  "app_name": "FairShift",
+  "tagline": "Fair shifts, safe sites, honest voices.",
+  "nav": {
+    "home": "Home",
+    "checkin": "Check In",
+    "checkout": "Check Out",
+    "payslip": "Payslip",
+    "report": "Report Issue",
+    "history": "My Shifts",
+    "logout": "Logout"
+  },
+  "checkin": {
+    "title": "Start Your Shift",
+    "select_shift": "Select Shift Type",
+    "btn": "Check In",
+    "success": "Checked in! Stay safe.",
+    "already_in": "Already checked in."
+  },
+  "checkout": {
+    "title": "End Your Shift",
+    "btn": "Check Out",
+    "success": "Checked out. Your pay is calculated below."
+  },
+  "payslip": {
+    "title": "Your Payslip",
+    "regular_hours": "Regular Hours",
+    "overtime_hours": "Overtime Hours",
+    "regular_pay": "Regular Pay",
+    "overtime_pay": "Overtime Pay",
+    "allowances": "Allowances",
+    "gross_pay": "Total Pay",
+    "no_shifts": "No completed shifts yet."
+  },
+  "report": {
+    "title": "Report an Issue",
+    "type_safety": "Safety Hazard",
+    "type_grievance": "Grievance",
+    "select_category": "Select Category",
+    "describe": "Describe (optional)",
+    "voice_btn": "🎤 Speak",
+    "voice_listening": "Listening...",
+    "voice_unsupported": "Voice not supported on this browser.",
+    "btn": "Submit Anonymously",
+    "success": "Reported. Your identity is protected.",
+    "anonymous_note": "Your name is never stored. Reports only appear to your admin when enough colleagues report the same issue.",
+    "threshold_note": "At least 3 reports needed to surface to admin."
+  },
+  "history": {
+    "title": "My Shift History",
+    "shift_type": "Shift",
+    "date": "Date",
+    "hours": "Hours",
+    "pay": "Pay",
+    "status": "Status",
+    "active": "Active",
+    "complete": "Complete"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong. Try again.",
+    "site_label": "Site",
+    "back": "Back",
+    "save": "Save",
+    "currency": "₹"
+  }
+}
