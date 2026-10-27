@@ -130,22 +130,19 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 @app.exception_handler(StarletteHTTPException)
 async def custom_404_handler(request: Request, exc: StarletteHTTPException):
-    route_paths = []
-    for r in request.app.routes:
-        if hasattr(r, "path"):
-            route_paths.append(r.path)
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "detail": exc.detail,
             "url_path": request.url.path,
             "scope_path": request.scope.get("path"),
-            "query": request.scope.get("query_string", b"").decode("latin1"),
-            "x_matched": request.headers.get("x-matched-path"),
-            "x_forwarded": request.headers.get("x-forwarded-uri"),
-            "route_samples": route_paths[:15],
+            "scope_raw_path": str(request.scope.get("raw_path")),
+            "scope_root_path": request.scope.get("root_path"),
+            "query_string": request.scope.get("query_string", b"").decode("latin1"),
+            "headers": dict(request.headers),
         }
     )
+
 
 
 
