@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+
+# Environment & Secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Node / Frontend build artifacts
+node_modules/
+.next/
+.nuxt/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Large assets
+*.mp4
+*.mov
+*.avi
+*.zip
+*.tar.gz
+datasets/
+videos/
+
+# Docker
+*.dockerignore

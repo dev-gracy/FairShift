@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="FairShift — Decent work platform for shift workers. Fair shifts, safe sites, honest voices. Aligned with UN SDG 8." />
+  <title>FairShift — Login</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    body { min-height: 100dvh; display: flex; flex-direction: column; }
+    .login-wrapper { flex: 1; display: flex; flex-direction: column; }
+    .lang-selector {
+      position: absolute; top: 16px; right: 16px;
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: var(--radius-md);
+      color: #fff; padding: 6px 10px;
+      font-family: var(--font-base); font-size: var(--text-sm); cursor: pointer;
+    }
+    .role-tabs { display: flex; gap: 0; border: 2px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+    .role-tab { flex: 1; padding: var(--space-3); border: none; background: var(--color-bg); font-family: var(--font-base); font-size: var(--text-sm); font-weight: 600; cursor: pointer; transition: all var(--transition-fast); }
+    .role-tab.active { background: var(--color-primary); color: #fff; }
+    .sdg-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
+      border-radius: var(--radius-full); padding: 4px 12px;
+      font-size: var(--text-xs); font-weight: 600; margin-top: var(--space-3);
+      color: rgba(255,255,255,.9);
+    }
+    .demo-hint { font-size: var(--text-xs); color: var(--color-text-muted); text-align: center; margin-top: var(--space-2); }
+    .hero-relative { position: relative; }
+  </style>
+</head>
+<body>
+  <div class="login-wrapper">
+    <!-- Hero -->
+    <div class="login-hero hero-relative">
+      <select id="lang-select" class="lang-selector" aria-label="Select language">
+        <option value="en">English</option>
+        <option value="hi">हिन्दी</option>
+        <option value="ta">தமிழ்</option>
+      </select>
+      <div class="login-hero__logo" aria-hidden="true">⚖️</div>
+      <h1 class="login-hero__title" id="hero-title">FairShift</h1>
+      <p class="login-hero__tagline" id="hero-tagline">Fair shifts, safe sites, honest voices.</p>
+      <div class="sdg-badge">🎯 UN SDG 8 — Decent Work &amp; Economic Growth</div>
+    </div>
+
+    <!-- Login Form -->
+    <div class="login-form">
+      <!-- Industry selector -->
+      <div class="form-group">
+        <label class="label" for="industry-select" id="lbl-industry">Select Industry / Site</label>
+        <select id="industry-select" class="select" aria-required="true">
+          <option value="">Loading...</option>
+        </select>
+      </div>
+
+      <!-- Role tabs -->
+      <div class="form-group">
+        <div class="role-tabs" role="tablist" aria-label="Login as">
+          <button id="tab-worker" class="role-tab active" role="tab" aria-selected="true" aria-controls="login-panel">
+            👷 Worker
+          </button>
+          <button id="tab-admin" class="role-tab" role="tab" aria-selected="false" aria-controls="login-panel">
+            🧑‍💼 Admin
+          </button>
+        </div>
+      </div>
+
+      <!-- Username -->
+      <div class="form-group">
+        <label class="label" for="username" id="lbl-username">Username</label>
+        <input id="username" type="text" class="input" autocomplete="username"
+               aria-required="true" aria-labelledby="lbl-username" placeholder="Enter username" />
+      </div>
+
+      <!-- Password -->
+      <div class="form-group">
+        <label class="label" for="password" id="lbl-password">Password</label>
+        <input id="password" type="password" class="input" autocomplete="current-password"
+               aria-required="true" aria-labelledby="lbl-password" placeholder="Enter password" />
+      </div>
+
+      <!-- Error message -->
+      <div id="login-error" class="alert alert--danger hidden" role="alert" aria-live="polite"></div>
+
+      <!-- Submit -->
+      <button id="login-btn" class="btn btn--primary btn--full" type="button">
+        Login
+      </button>
+
+      <!-- Demo hints -->
+      <p class="demo-hint" id="demo-hint">
+        Demo: Worker → <strong>raju_worker</strong> | Admin → <strong>const_admin</strong>
+      </p>
+    </div>
+  </div>
+
+  <script src="/api.js"></script>
+  <script>
+    (async () => {
+      // Redirect if already logged in
+      if (FS.isLoggedIn()) {
+        const user = FS.getUser();
+        window.location.href = user?.role === 'admin' ? '/admin/index.html' : '/worker/index.html';
+        return;
+      }
+
+      // Load default locale
+      await FS.loadLocale('en');
+
+      // Load industries
+      const industriesData = await FS.get('/auth/industries', false).catch(() => null);
+      const industrySelect = FS.$('#industry-select');
+      if (industriesData?.industries) {
+        industrySelect.innerHTML = industriesData.industries.map(i =>
+          `<option value="${i.id}">${i.name}</option>`
+        ).join('');
+      }
+
+      // Language switcher
+      const langSelect = FS.$('#lang-select');
+      const demoHints = {
+        construction: {
+          worker: 'raju_worker',
+          admin: 'const_admin',
+        },
+        hospital: {
+          worker: 'meena_worker',
+          admin: 'hospital_admin',
+        },
+      };
+
+      langSelect.addEventListener('change', async () => {
+        const lang = langSelect.value;
+        await FS.loadLocale(lang);
+        FS.$('#hero-tagline').textContent = FS.t('tagline');
+      });
+
+      // Role tab switching
+      let selectedRole = 'worker';
+      const tabWorker = FS.$('#tab-worker');
+      const tabAdmin  = FS.$('#tab-admin');
+      const demoHint  = FS.$('#demo-hint');
+
+      function updateDemoHint() {
+        const industry = industrySelect.value || 'construction';
+        const hints = demoHints[industry] || demoHints.construction;
+        const pwd = 'WorkerPass@2026';
+        const adminPwd = 'AdminPass@2026';
+        if (selectedRole === 'worker') {
+          demoHint.innerHTML = `Demo: <strong>${hints.worker}</strong> / <strong>${pwd}</strong>`;
+        } else {
+          demoHint.innerHTML = `Demo: <strong>${hints.admin}</strong> / <strong>${adminPwd}</strong>`;
+        }
+      }
+
+      tabWorker.addEventListener('click', () => {
+        selectedRole = 'worker';
+        tabWorker.classList.add('active'); tabWorker.setAttribute('aria-selected','true');
+        tabAdmin.classList.remove('active'); tabAdmin.setAttribute('aria-selected','false');
+        updateDemoHint();
+      });
+
+      tabAdmin.addEventListener('click', () => {
+        selectedRole = 'admin';
+        tabAdmin.classList.add('active'); tabAdmin.setAttribute('aria-selected','true');
+        tabWorker.classList.remove('active'); tabWorker.setAttribute('aria-selected','false');
+        updateDemoHint();
+      });
+
+      industrySelect.addEventListener('change', updateDemoHint);
+      updateDemoHint();
+
+      // Login
+      const loginBtn = FS.$('#login-btn');
+      const errorEl  = FS.$('#login-error');
+
+      async function doLogin() {
+        const username = FS.$('#username').value.trim();
+        const password = FS.$('#password').value;
+
+        FS.hide(errorEl);
+        if (!username || !password) {
+          errorEl.textContent = 'Please enter username and password.';
+          FS.show(errorEl); return;
+        }
+
+        FS.setLoading(loginBtn, true, 'Login');
+        try {
+          const data = await FS.login(username, password);
+          const dest = data.role === 'admin' ? '/admin/index.html' : '/worker/index.html';
+          window.location.href = dest;
+        } catch (err) {
+          errorEl.textContent = err.message || 'Login failed. Check credentials.';
+          FS.show(errorEl);
+        } finally {
+          FS.setLoading(loginBtn, false, 'Login');
+        }
+      }
+
+      loginBtn.addEventListener('click', doLogin);
+
+      // Allow Enter key to submit
+      FS.$('#password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+      FS.$('#username').addEventListener('keydown', e => { if (e.key === 'Enter') FS.$('#password').focus(); });
+    })();
+  </script>
+</body>
+</html>

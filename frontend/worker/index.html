@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="FairShift Worker — Check in, report hazards, and view your payslip. Works on basic smartphones." />
+  <title>FairShift — Worker</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    /* Page panels — only one visible at a time */
+    .panel { display: none; }
+    .panel.active { display: flex; flex-direction: column; gap: var(--space-5); }
+
+    /* Home greeting */
+    .greeting-card {
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+      color: #fff;
+      border-radius: var(--radius-xl);
+      padding: var(--space-6);
+      box-shadow: var(--shadow-xl);
+    }
+    .greeting-card__name { font-size: var(--text-2xl); font-weight: 800; }
+    .greeting-card__sub  { font-size: var(--text-sm); opacity: 0.85; margin-top: 4px; }
+    .greeting-card__status { margin-top: var(--space-4); display: flex; align-items: center; gap: var(--space-2); }
+
+    /* Quick actions grid */
+    .quick-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); }
+    .action-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      cursor: pointer;
+      text-align: center;
+      transition: all var(--transition-fast);
+      display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+      text-decoration: none; color: inherit;
+      min-height: 100px;
+    }
+    .action-card:hover { border-color: var(--color-primary); box-shadow: var(--shadow-md); transform: translateY(-2px); background: var(--color-primary-light); }
+    .action-card:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+    .action-card .icon { font-size: 2.2rem; }
+    .action-card .label { font-size: var(--text-sm); font-weight: 700; color: var(--color-text); }
+    .action-card .desc  { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+    /* Category picker */
+    .category-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); }
+    .category-btn {
+      border: 2px solid var(--color-border); border-radius: var(--radius-lg);
+      padding: var(--space-4); background: var(--color-surface);
+      cursor: pointer; text-align: center;
+      transition: all var(--transition-fast); font-family: var(--font-base);
+    }
+    .category-btn:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
+    .category-btn.selected { border-color: var(--color-primary); background: var(--color-primary-light); box-shadow: 0 0 0 3px rgba(13,110,110,.2); }
+    .category-btn .cat-icon { font-size: 1.8rem; margin-bottom: 4px; }
+    .category-btn .cat-name { font-size: var(--text-xs); font-weight: 600; }
+
+    /* Report type toggle */
+    .type-toggle { display: flex; border: 2px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+    .type-btn { flex: 1; padding: var(--space-3); border: none; background: var(--color-bg); font-family: var(--font-base); font-size: var(--text-sm); font-weight: 600; cursor: pointer; transition: all var(--transition-fast); }
+    .type-btn.active { background: var(--color-primary); color: #fff; }
+
+    /* Shift history list */
+    .shift-list { display: flex; flex-direction: column; gap: var(--space-3); }
+    .shift-item {
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); padding: var(--space-4);
+      display: flex; justify-content: space-between; align-items: center;
+      gap: var(--space-3);
+    }
+    .shift-item__left { display: flex; flex-direction: column; gap: 4px; }
+    .shift-item__type { font-weight: 700; font-size: var(--text-base); text-transform: capitalize; }
+    .shift-item__date { font-size: var(--text-xs); color: var(--color-text-muted); }
+    .shift-item__right { text-align: right; }
+    .shift-item__pay { font-size: var(--text-lg); font-weight: 800; color: var(--color-primary); }
+    .shift-item__hours { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+    /* Active shift banner */
+    .active-shift-banner {
+      background: var(--color-success-light);
+      border: 2px solid var(--color-success);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* Language bar */
+    .lang-bar { display: flex; gap: var(--space-2); align-items: center; }
+    .lang-btn {
+      padding: 4px 10px; border-radius: var(--radius-full);
+      border: 1px solid var(--color-border); background: var(--color-bg);
+      font-family: var(--font-base); font-size: var(--text-xs); font-weight: 600;
+      cursor: pointer; transition: all var(--transition-fast);
+    }
+    .lang-btn.active { background: rgba(255,255,255,.25); color: #fff; border-color: rgba(255,255,255,.4); }
+    .lang-btn:not(.active) { color: var(--color-text-muted); }
+
+    .section-title { font-size: var(--text-lg); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <!-- App bar -->
+  <header class="app-bar" role="banner">
+    <div>
+      <div class="app-bar__title">⚖️ FairShift</div>
+      <div class="app-bar__subtitle" id="industry-label">Loading...</div>
+    </div>
+    <div class="app-bar__actions">
+      <!-- Language switcher inside app bar -->
+      <div class="lang-bar" role="group" aria-label="Select language">
+        <button class="lang-btn active" data-lang="en" aria-pressed="true">EN</button>
+        <button class="lang-btn" data-lang="hi" aria-pressed="false">HI</button>
+        <button class="lang-btn" data-lang="ta" aria-pressed="false">TA</button>
+      </div>
+      <button class="app-bar__btn" id="logout-btn" aria-label="Logout">⎋</button>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main id="main-content" class="page-content" role="main">
+
+    <!-- ── HOME PANEL ──────────────────────────────────────────────── -->
+    <div id="panel-home" class="panel active" role="tabpanel" aria-labelledby="nav-home">
+      <div class="greeting-card">
+        <div class="greeting-card__name" id="greeting-name">Hello, Worker 👋</div>
+        <div class="greeting-card__sub" id="greeting-sub">Have a safe shift today.</div>
+        <div class="greeting-card__status" id="active-shift-status"></div>
+      </div>
+
+      <!-- Quick action buttons — icon-first for low literacy -->
+      <div class="quick-actions" role="list" aria-label="Quick actions">
+        <button class="action-card" data-nav="checkin" role="listitem" aria-label="Check In">
+          <span class="icon" aria-hidden="true">🟢</span>
+          <span class="label" id="qa-checkin">Check In</span>
+          <span class="desc" id="qa-checkin-desc">Start your shift</span>
+        </button>
+        <button class="action-card" data-nav="payslip" role="listitem" aria-label="View Payslip">
+          <span class="icon" aria-hidden="true">💰</span>
+          <span class="label" id="qa-payslip">Payslip</span>
+          <span class="desc" id="qa-payslip-desc">See your earnings</span>
+        </button>
+        <button class="action-card" data-nav="report" role="listitem" aria-label="Report Issue">
+          <span class="icon" aria-hidden="true">🚨</span>
+          <span class="label" id="qa-report">Report Issue</span>
+          <span class="desc" id="qa-report-desc">Anonymous &amp; safe</span>
+        </button>
+        <button class="action-card" data-nav="history" role="listitem" aria-label="Shift History">
+          <span class="icon" aria-hidden="true">📋</span>
+          <span class="label" id="qa-history">My Shifts</span>
+          <span class="desc" id="qa-history-desc">View work history</span>
+        </button>
+      </div>
+
+      <!-- SDG badge -->
+      <div class="alert alert--info" role="note">
+        <strong>UN SDG 8</strong> — This app supports Decent Work and Economic Growth by empowering workers with transparency and a safe reporting voice.
+      </div>
+    </div>
+
+    <!-- ── CHECK-IN PANEL ──────────────────────────────────────────── -->
+    <div id="panel-checkin" class="panel" role="tabpanel" aria-labelledby="nav-checkin">
+      <h2 id="checkin-title">Start Your Shift</h2>
+
+      <!-- Active shift banner (shown if already checked in) -->
+      <div id="active-banner" class="active-shift-banner hidden">
+        <div>
+          <div class="font-bold" style="color: var(--color-success);">✅ Shift Active</div>
+          <div class="text-sm text-muted" id="active-since">Since —</div>
+        </div>
+        <button id="checkout-btn" class="btn btn--danger" aria-label="Check out of current shift">
+          Check Out
+        </button>
+      </div>
+
+      <!-- Shift type picker -->
+      <div id="shift-picker" class="form-group">
+        <label class="label" id="lbl-shift-type">Select Shift Type</label>
+        <div id="shift-grid" class="shift-grid" role="radiogroup" aria-labelledby="lbl-shift-type">
+          <!-- Populated dynamically from industry config -->
+          <div class="skeleton" style="height: 90px; border-radius: var(--radius-lg);"></div>
+          <div class="skeleton" style="height: 90px; border-radius: var(--radius-lg);"></div>
+        </div>
+      </div>
+
+      <button id="checkin-btn" class="btn btn--primary btn--full" disabled aria-label="Confirm check in">
+        🟢 Check In
+      </button>
+    </div>
+
+    <!-- ── PAYSLIP PANEL ───────────────────────────────────────────── -->
+    <div id="panel-payslip" class="panel" role="tabpanel" aria-labelledby="nav-payslip">
+      <h2 id="payslip-title">Your Payslip</h2>
+      <div id="payslip-content">
+        <div class="spinner" role="status" aria-label="Loading payslip"></div>
+      </div>
+    </div>
+
+    <!-- ── REPORT PANEL ────────────────────────────────────────────── -->
+    <div id="panel-report" class="panel" role="tabpanel" aria-labelledby="nav-report">
+      <h2 id="report-title">Report an Issue</h2>
+
+      <!-- Anonymity notice — most important for worker trust -->
+      <div class="alert alert--info" role="note" id="anon-note">
+        🔒 Your identity is <strong>never stored</strong>. Reports only reach your admin once enough colleagues report the same issue.
+      </div>
+
+      <!-- Report type toggle -->
+      <div class="form-group">
+        <label class="label" id="lbl-report-type">Report Type</label>
+        <div class="type-toggle" role="group" aria-labelledby="lbl-report-type">
+          <button id="type-safety" class="type-btn active" data-type="safety" aria-pressed="true">
+            ⛑️ Safety Hazard
+          </button>
+          <button id="type-grievance" class="type-btn" data-type="grievance" aria-pressed="false">
+            📢 Grievance
+          </button>
+        </div>
+      </div>
+
+      <!-- Category grid (populated from industry config) -->
+      <div class="form-group">
+        <label class="label" id="lbl-category">Select Category</label>
+        <div id="category-grid" class="category-grid" role="radiogroup" aria-labelledby="lbl-category">
+          <div class="skeleton" style="height:80px; border-radius:var(--radius-lg);"></div>
+          <div class="skeleton" style="height:80px; border-radius:var(--radius-lg);"></div>
+        </div>
+      </div>
+
+      <!-- Voice / text description -->
+      <div class="form-group">
+        <label class="label" for="report-desc" id="lbl-desc">Describe (optional)</label>
+        <div class="flex gap-2 items-center">
+          <button id="voice-btn" class="btn btn--voice" aria-label="Tap to speak your report" type="button">
+            🎤 Speak
+          </button>
+          <span class="text-xs text-muted">or type below</span>
+        </div>
+        <textarea id="report-desc" class="textarea" rows="3"
+                  aria-labelledby="lbl-desc"
+                  placeholder="Describe the issue (optional)..."
+                  maxlength="1000"></textarea>
+        <div class="text-xs text-muted" id="char-count">0 / 1000</div>
+      </div>
+
+      <button id="submit-report-btn" class="btn btn--accent btn--full" disabled aria-label="Submit anonymous report">
+        Submit Anonymously
+      </button>
+    </div>
+
+    <!-- ── HISTORY PANEL ───────────────────────────────────────────── -->
+    <div id="panel-history" class="panel" role="tabpanel" aria-labelledby="nav-history">
+      <h2 id="history-title">My Shift History</h2>
+      <div id="history-content">
+        <div class="spinner" role="status" aria-label="Loading shift history"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom navigation -->
+  <nav class="nav-bottom" role="tablist" aria-label="Main navigation">
+    <button class="nav-item active" id="nav-home" data-panel="home" role="tab" aria-selected="true" aria-controls="panel-home" tabindex="0">
+      <span class="nav-icon" aria-hidden="true">🏠</span>
+      <span id="nav-lbl-home">Home</span>
+    </button>
+    <button class="nav-item" id="nav-checkin" data-panel="checkin" role="tab" aria-selected="false" aria-controls="panel-checkin" tabindex="-1">
+      <span class="nav-icon" aria-hidden="true">🕐</span>
+      <span id="nav-lbl-checkin">Check In</span>
+    </button>
+    <button class="nav-item" id="nav-payslip" data-panel="payslip" role="tab" aria-selected="false" aria-controls="panel-payslip" tabindex="-1">
+      <span class="nav-icon" aria-hidden="true">💰</span>
+      <span id="nav-lbl-payslip">Payslip</span>
+    </button>
+    <button class="nav-item" id="nav-report" data-panel="report" role="tab" aria-selected="false" aria-controls="panel-report" tabindex="-1">
+      <span class="nav-icon" aria-hidden="true">🚨</span>
+      <span id="nav-lbl-report">Report</span>
+    </button>
+    <button class="nav-item" id="nav-history" data-panel="history" role="tab" aria-selected="false" aria-controls="panel-history" tabindex="-1">
+      <span class="nav-icon" aria-hidden="true">📋</span>
+      <span id="nav-lbl-history">History</span>
+    </button>
+  </nav>
+
+  <script src="/api.js"></script>
+  <script>
+    /* ───────────────────────────────────────────────────────────────────
+     * FairShift Worker UI — app.js (inline for single-file simplicity)
+     * ─────────────────────────────────────────────────────────────────── */
+    (async () => {
+      // Auth guard
+      if (!FS.isLoggedIn()) { FS.redirectToLogin(); return; }
+      const user = FS.getUser();
+      if (user?.role !== 'worker') { window.location.href = '/admin/index.html'; return; }
+
+      // Load locale
+      await FS.loadLocale(user.language_pref || 'en');
+
+      // Load industry config
+      let industryConfig = null;
+      try {
+        industryConfig = await FS.getIndustryConfig(user.industry_id);
+      } catch {
+        FS.toast('Failed to load industry config', 'error');
+      }
+
+      // ── Apply translations ──────────────────────────────────────────
+      function applyLocale() {
+        FS.$('#industry-label').textContent = industryConfig?.display_name_en ?? user.industry_id;
+        FS.$('#greeting-name').textContent = `Hello, ${user.name} 👋`;
+        FS.$('#greeting-sub').textContent = FS.t('checkin.success').replace('!', '') || 'Have a safe shift.';
+        FS.$('#checkin-title').textContent  = FS.t('checkin.title');
+        FS.$('#payslip-title').textContent  = FS.t('payslip.title');
+        FS.$('#report-title').textContent   = FS.t('report.title');
+        FS.$('#history-title').textContent  = FS.t('history.title');
+        FS.$('#nav-lbl-home').textContent   = FS.t('nav.home');
+        FS.$('#nav-lbl-checkin').textContent = FS.t('nav.checkin');
+        FS.$('#nav-lbl-payslip').textContent = FS.t('nav.payslip');
+        FS.$('#nav-lbl-report').textContent = FS.t('nav.report');
+        FS.$('#nav-lbl-history').textContent = FS.t('nav.history');
+        FS.$('#qa-checkin').textContent     = FS.t('nav.checkin');
+        FS.$('#qa-payslip').textContent     = FS.t('nav.payslip');
+        FS.$('#qa-report').textContent      = FS.t('nav.report');
+        FS.$('#qa-history').textContent     = FS.t('nav.history');
+        FS.$('#lbl-shift-type').textContent = FS.t('checkin.select_shift');
+        FS.$('#anon-note').innerHTML        = `🔒 ${FS.t('report.anonymous_note')}`;
+        FS.$('#voice-btn').textContent      = FS.t('report.voice_btn');
+        FS.$('#submit-report-btn').textContent = FS.t('report.btn');
+      }
+      applyLocale();
+
+      // ── Language switcher ───────────────────────────────────────────
+      FS.$$('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          FS.$$('.lang-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
+          btn.classList.add('active'); btn.setAttribute('aria-pressed','true');
+          await FS.loadLocale(btn.dataset.lang);
+          applyLocale();
+        });
+      });
+
+      // ── Navigation (tab pattern) ────────────────────────────────────
+      let currentPanel = 'home';
+
+      function showPanel(panelId) {
+        FS.$$('.panel').forEach(p => p.classList.remove('active'));
+        FS.$$('.nav-item').forEach(n => {
+          n.classList.remove('active'); n.setAttribute('aria-selected','false'); n.tabIndex = -1;
+        });
+        const panel = FS.$(`#panel-${panelId}`);
+        const nav   = FS.$(`#nav-${panelId}`);
+        if (panel) panel.classList.add('active');
+        if (nav)   { nav.classList.add('active'); nav.setAttribute('aria-selected','true'); nav.tabIndex = 0; }
+        currentPanel = panelId;
+
+        // Lazy-load panel data
+        if (panelId === 'payslip') loadPayslip();
+        if (panelId === 'history') loadHistory();
+        if (panelId === 'checkin') checkActiveShift();
+        if (panelId === 'report') loadCategoryGrid();
+      }
+
+      FS.$$('.nav-item').forEach(btn => btn.addEventListener('click', () => showPanel(btn.dataset.panel)));
+      FS.$$('[data-nav]').forEach(btn => btn.addEventListener('click', () => showPanel(btn.dataset.nav)));
+
+      // Keyboard navigation for tab list (arrow keys)
+      FS.$$('.nav-item').forEach((btn, i, arr) => {
+        btn.addEventListener('keydown', e => {
+          if (e.key === 'ArrowRight') { e.preventDefault(); arr[(i+1) % arr.length].focus(); }
+          if (e.key === 'ArrowLeft')  { e.preventDefault(); arr[(i-1+arr.length) % arr.length].focus(); }
+        });
+      });
+
+      // ── Logout ─────────────────────────────────────────────────────
+      FS.$('#logout-btn').addEventListener('click', () => { if (confirm('Logout?')) FS.logout(); });
+
+      // ── Check-in panel ──────────────────────────────────────────────
+      let selectedShiftType = null;
+      let activeShift = null;
+
+      async function checkActiveShift() {
+        try {
+          const data = await FS.get('/shifts/my-shifts?limit=1');
+          const latest = data.shifts?.[0];
+          activeShift = (latest?.is_active) ? latest : null;
+        } catch { activeShift = null; }
+        renderCheckinState();
+      }
+
+      function renderCheckinState() {
+        const banner = FS.$('#active-banner');
+        const picker = FS.$('#shift-picker');
+        const checkinBtn = FS.$('#checkin-btn');
+
+        if (activeShift) {
+          FS.show(banner);
+          FS.hide(picker);
+          checkinBtn.disabled = true;
+          FS.$('#active-since').textContent = `Since ${FS.fmtTime(activeShift.check_in_time)}`;
+          // Update home greeting
+          FS.$('#active-shift-status').innerHTML =
+            `<span class="badge badge--success">🟢 Shift Active</span>`;
+        } else {
+          FS.hide(banner);
+          FS.show(picker);
+          checkinBtn.disabled = !selectedShiftType;
+          FS.$('#active-shift-status').innerHTML = '';
+          renderShiftGrid();
+        }
+      }
+
+      function renderShiftGrid() {
+        const grid = FS.$('#shift-grid');
+        if (!industryConfig?.shift_types) return;
+        const lang = FS.$('.lang-btn.active')?.dataset.lang || 'en';
+        grid.innerHTML = industryConfig.shift_types.map(s => {
+          const label = s[`label_${lang}`] || s.label_en;
+          const icons = { day: '☀️', morning: '🌅', evening: '🌆', night: '🌙', oncall: '📞', extended: '⏰' };
+          const icon = icons[s.id] || '🔄';
+          return `
+            <button class="shift-option${selectedShiftType === s.id ? ' selected' : ''}"
+                    data-shift="${s.id}" role="radio"
+                    aria-checked="${selectedShiftType === s.id}"
+                    aria-label="${label} ${s.start}–${s.end}">
+              <span class="shift-icon" aria-hidden="true">${icon}</span>
+              <span class="shift-name">${label}</span>
+              <span class="shift-time">${s.start} – ${s.end}</span>
+            </button>`;
+        }).join('');
+
+        FS.$$('.shift-option').forEach(btn => {
+          btn.addEventListener('click', () => {
+            selectedShiftType = btn.dataset.shift;
+            FS.$$('.shift-option').forEach(b => { b.classList.remove('selected'); b.setAttribute('aria-checked','false'); });
+            btn.classList.add('selected'); btn.setAttribute('aria-checked','true');
+            FS.$('#checkin-btn').disabled = false;
+          });
+        });
+      }
+
+      FS.$('#checkin-btn').addEventListener('click', async () => {
+        if (!selectedShiftType) return;
+        const btn = FS.$('#checkin-btn');
+        FS.setLoading(btn, true, '🟢 Check In');
+        try {
+          const res = await FS.post('/shifts/checkin', { shift_type: selectedShiftType, site_id: 'site_a' });
+          FS.toast(`${res.shift_label} — ${FS.t('checkin.success')}`, 'success');
+          selectedShiftType = null;
+          await checkActiveShift();
+        } catch (err) {
+          FS.toast(err.message, 'error');
+        } finally {
+          FS.setLoading(btn, false, '🟢 Check In');
+        }
+      });
+
+      FS.$('#checkout-btn').addEventListener('click', async () => {
+        const btn = FS.$('#checkout-btn');
+        FS.setLoading(btn, true, 'Check Out');
+        try {
+          const res = await FS.post('/shifts/checkout', {});
+          FS.toast(`${FS.t('checkout.success')} ${FS.fmtCurrency(res.gross_pay)}`, 'success');
+          activeShift = null;
+          renderCheckinState();
+          showPanel('payslip');
+        } catch (err) {
+          FS.toast(err.message, 'error');
+        } finally {
+          FS.setLoading(btn, false, 'Check Out');
+        }
+      });
+
+      // ── Payslip panel ───────────────────────────────────────────────
+      async function loadPayslip() {
+        const el = FS.$('#payslip-content');
+        el.innerHTML = `<div class="spinner" role="status" aria-label="Loading payslip"></div>`;
+        try {
+          const data = await FS.get('/shifts/payslip/latest');
+          if (!data.payslip) {
+            el.innerHTML = `<p class="text-muted">${FS.t('payslip.no_shifts')}</p>`;
+            return;
+          }
+          const p = data.payslip;
+          const bd = p.breakdown || {};
+          const allowanceRows = Object.entries(bd.allowances || {}).map(([name, amt]) =>
+            `<div class="payslip__row"><span>${name}</span><span>${FS.fmtCurrency(amt)}</span></div>`
+          ).join('');
+
+          el.innerHTML = `
+            <div class="payslip" aria-label="Payslip for ${p.worker_name}">
+              <div class="payslip__header">${p.industry} · ${p.date}</div>
+              <div class="payslip__amount">${FS.fmtCurrency(p.breakdown?.gross_pay ?? 0)}</div>
+              <div class="text-sm" style="opacity:.8">${p.shift_type} shift · ${p.check_in} – ${p.check_out}</div>
+              <hr class="payslip__divider" />
+              <div class="payslip__row">
+                <span>${FS.t('payslip.regular_hours')} (${bd.regular_hours}h)</span>
+                <span>${FS.fmtCurrency(bd.regular_pay ?? 0)}</span>
+              </div>
+              ${bd.overtime_hours > 0 ? `
+              <div class="payslip__row">
+                <span>${FS.t('payslip.overtime_hours')} (${bd.overtime_hours}h)</span>
+                <span>${FS.fmtCurrency(bd.overtime_pay ?? 0)}</span>
+              </div>` : ''}
+              ${allowanceRows}
+              <hr class="payslip__divider" />
+              <div class="payslip__row payslip__row--total">
+                <span>${FS.t('payslip.gross_pay')}</span>
+                <span>${FS.fmtCurrency(bd.gross_pay ?? 0)}</span>
+              </div>
+            </div>
+            <div class="alert alert--success" style="margin-top:0">
+              ✅ This breakdown is calculated automatically from your industry's pay rules — no guesswork.
+            </div>`;
+        } catch (err) {
+          el.innerHTML = `<div class="alert alert--danger">${FS.t('common.error')}</div>`;
+        }
+      }
+
+      // ── Report panel ────────────────────────────────────────────────
+      let selectedCategory = null;
+      let selectedReportType = 'safety';
+
+      function loadCategoryGrid() {
+        if (!industryConfig) return;
+        renderCategoryGrid('safety');
+      }
+
+      function renderCategoryGrid(type) {
+        const grid = FS.$('#category-grid');
+        const lang = FS.$('.lang-btn.active')?.dataset.lang || 'en';
+        const items = type === 'safety'
+          ? (industryConfig?.hazard_categories || [])
+          : (industryConfig?.grievance_categories || []);
+
+        grid.innerHTML = items.map(c => {
+          const name = c[`label_${lang}`] || c.label_en;
+          const icon = c.icon || '⚠️';
+          return `
+            <button class="category-btn${selectedCategory === c.id ? ' selected' : ''}"
+                    data-category="${c.id}" role="radio"
+                    aria-checked="${selectedCategory === c.id}"
+                    aria-label="${name}">
+              <div class="cat-icon" aria-hidden="true">${icon}</div>
+              <div class="cat-name">${name}</div>
+            </button>`;
+        }).join('');
+
+        FS.$$('.category-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            selectedCategory = btn.dataset.category;
+            FS.$$('.category-btn').forEach(b => { b.classList.remove('selected'); b.setAttribute('aria-checked','false'); });
+            btn.classList.add('selected'); btn.setAttribute('aria-checked','true');
+            FS.$('#submit-report-btn').disabled = false;
+          });
+        });
+      }
+
+      // Report type toggle
+      FS.$$('.type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedReportType = btn.dataset.type;
+          selectedCategory = null;
+          FS.$('#submit-report-btn').disabled = true;
+          FS.$$('.type-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
+          btn.classList.add('active'); btn.setAttribute('aria-pressed','true');
+          renderCategoryGrid(selectedReportType);
+        });
+      });
+
+      // Voice input
+      const voiceBtn = FS.$('#voice-btn');
+      const descArea = FS.$('#report-desc');
+      FS.initVoiceInput(voiceBtn, descArea, user.language_pref || 'en');
+
+      // Char counter
+      descArea.addEventListener('input', () => {
+        FS.$('#char-count').textContent = `${descArea.value.length} / 1000`;
+      });
+
+      // Submit report
+      FS.$('#submit-report-btn').addEventListener('click', async () => {
+        if (!selectedCategory) return;
+        const btn = FS.$('#submit-report-btn');
+        FS.setLoading(btn, true, FS.t('report.btn'));
+        try {
+          await FS.post('/reports/submit', {
+            report_type: selectedReportType,
+            category: selectedCategory,
+            description: descArea.value.trim(),
+            site_id: 'site_a',
+          });
+          FS.toast(FS.t('report.success'), 'success');
+          descArea.value = '';
+          selectedCategory = null;
+          FS.$('#submit-report-btn').disabled = true;
+          FS.$$('.category-btn').forEach(b => { b.classList.remove('selected'); b.setAttribute('aria-checked','false'); });
+          FS.$('#char-count').textContent = '0 / 1000';
+          showPanel('home');
+        } catch (err) {
+          FS.toast(err.message, 'error');
+        } finally {
+          FS.setLoading(btn, false, FS.t('report.btn'));
+        }
+      });
+
+      // ── History panel ───────────────────────────────────────────────
+      async function loadHistory() {
+        const el = FS.$('#history-content');
+        el.innerHTML = `<div class="spinner" role="status" aria-label="Loading history"></div>`;
+        try {
+          const data = await FS.get('/shifts/my-shifts?limit=20');
+          if (!data.shifts?.length) {
+            el.innerHTML = `<p class="text-muted">No shifts yet.</p>`; return;
+          }
+          el.innerHTML = `<div class="shift-list">
+            ${data.shifts.map(s => `
+              <div class="shift-item">
+                <div class="shift-item__left">
+                  <div class="shift-item__type">${s.shift_type}</div>
+                  <div class="shift-item__date">${FS.fmtDate(s.check_in_time)} · ${FS.fmtTime(s.check_in_time)}</div>
+                  ${s.is_active ? '<span class="badge badge--success">Active</span>' : ''}
+                </div>
+                <div class="shift-item__right">
+                  <div class="shift-item__pay">${s.gross_pay ? FS.fmtCurrency(s.gross_pay) : '—'}</div>
+                  <div class="shift-item__hours">${s.duration_hours ? FS.fmtHours(s.duration_hours) : 'In progress'}</div>
+                  ${s.overtime_hours > 0 ? `<span class="badge badge--warning">+${FS.fmtHours(s.overtime_hours)} OT</span>` : ''}
+                </div>
+              </div>`).join('')}
+          </div>`;
+        } catch {
+          el.innerHTML = `<div class="alert alert--danger">${FS.t('common.error')}</div>`;
+        }
+      }
+
+      // Initial load
+      checkActiveShift();
+    })();
+  </script>
+</body>
+</html>
