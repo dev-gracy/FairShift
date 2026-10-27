@@ -1,22 +1,55 @@
 # FairShift
 
-> **One platform, every industry — fair shifts, safe sites, honest voices.**
+> **One platform, every industry — fair shifts, safe sites, honest voices.**  
 > Prompt Wars 2026 × SRM ACM Student Chapter | UN SDG 8: Decent Work and Economic Growth
-
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Cloud%20Run-blue)](https://YOUR_SERVICE.run.app)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 ---
 
-## What is FairShift?
+## 1. Chosen Vertical
 
-FairShift is a dual-interface workforce management platform for employee-intensive sectors. It replaces paper registers and WhatsApp groups with three working features that directly address the named pain points from the problem statement:
+**UN Sustainable Development Goal 8: Decent Work & Economic Growth**  
+**Target Group:** Shift and hourly workers in employee-intensive, high-turnover sectors (specifically **Construction Sites** and **Healthcare / Hospitals**).
 
-| Feature | Pain Point Solved |
-|---|---|
-| **Config-driven shift tracking with automatic pay** | Opaque Pay Calculations — workers see exactly how every rupee is calculated |
-| **Threshold-gated anonymous safety & grievance reporting** | Fear of Identification — no single worker can be traced from a report |
-| **Explainable admin risk dashboard** | Zero Workforce Visibility / Delayed Escalation — admins see risk *before* it becomes a crisis, with the reasons shown |
+---
+
+## 2. Approach and Logic
+
+Workers in shift-intensive industries face three core systemic failures:
+1. **Opaque Wages & Unpaid Overtime:** Pay slips are vague or non-existent, leaving workers unable to verify daily wage calculations, hazard allowances, or overtime multipliers.
+2. **Fear of Retaliation in Reporting:** Workers avoid reporting unsafe working conditions or workplace grievances due to fear of termination or employer retaliation.
+3. **Zero Proactive Workforce Visibility:** Managers lack leading indicators for burnout, fatigue, and site hazards until an injury, work stoppage, or resignation occurs.
+
+### Core Architectural Logic:
+- **Zero-Hardcoding / Config-Driven Multitenancy:** A single unified codebase powers multiple industries simply by loading configuration profiles (`config/industry_profiles.json`).
+- **Mathematical Privacy (k-Anonymity Gating):** Anonymous grievance and safety reports have **no `user_id` column** in the database schema. Reports remain private in an encrypted pool until at least $k=3$ workers independently report the same category in the same time window.
+- **Deterministic & Explainable Risk Scoring:** Admins are provided with a 0–100 risk score that transparently lists the exact reasons (e.g. `+20 points: average shift duration > 9.5h`, `+25 points: 3+ unresolved safety hazards`).
+
+---
+
+## 3. How the Solution Works
+
+FairShift provides a responsive, dual-interface platform (Worker Portal + Admin Dashboard):
+
+### For Shift Workers (`/worker`):
+- **1-Click Shift Check-in / Check-out:** Seamless tracking with automatic duration computation.
+- **Transparent Instant Payslip:** Live itemized breakdown showing base pay, overtime hours with legal multiplier (1.5× for construction, 2.0× for hospital), and special hazard/night allowances.
+- **Protected Voice-Enabled Grievance & Hazard Reporting:** Multilingual hazard and grievance logging (English, Hindi, Tamil) with speech-to-text voice input.
+- **Personal Shift & Earning History:** Complete historical audit trail for past shifts and wages.
+
+### For Site Administrators (`/admin`):
+- **Live Workforce & Shift Oversight:** Instant count of active workers on site, today's overtime hours, and active risk metrics.
+- **Surfaced Cluster Alerts:** Only surfaced when $k \ge 3$ reports match a category, preventing employee de-anonymization while demanding immediate administrative attention.
+- **Transparent Safety Risk Gauge:** Visual meter displaying current site risk level and the contributing causal factors.
+- **Actionable Escalation Workflow:** Mark surfaced safety/grievance clusters as "Investigating" or "Resolved".
+
+---
+
+## 4. Assumptions Made
+
+1. **Shift Schedule Verification:** Check-in timestamps are taken from system time upon submission. In enterprise rollouts, this can be integrated with NFC badge readers or geofenced kiosks.
+2. **k-Anonymity Cluster Window:** Reports are grouped within a rolling 7-day window per site and category with $k=3$ as the default anonymization threshold.
+3. **Industry Profiles:** Daily minimum wage baselines and overtime multipliers are derived from standard statutory regulations (e.g., Factories Act & Occupational Safety codes).
+4. **Authentication Model:** JWT bearer tokens stored in `sessionStorage` (cleared automatically on tab close to protect shared devices) with role-based access control (`worker` vs `admin`).
 
 ---
 
