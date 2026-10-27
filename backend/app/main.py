@@ -88,6 +88,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+@app.middleware("http")
+async def restore_vercel_path(request: Request, call_next):
+    matched = request.headers.get("x-matched-path")
+    if matched:
+        real_path = matched.split("?")[0]
+        request.scope["path"] = real_path
+    response = await call_next(request)
+    return response
+
+
 # ---------------------------------------------------------------------------
 # Security headers middleware
 # Adds CSP, HSTS, X-Frame-Options etc. on every response
