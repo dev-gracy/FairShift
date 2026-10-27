@@ -91,9 +91,8 @@ app = FastAPI(
 @app.middleware("http")
 async def restore_vercel_path(request: Request, call_next):
     matched = request.headers.get("x-matched-path")
-    if matched:
-        real_path = matched.split("?")[0]
-        request.scope["path"] = real_path
+    if matched and "index.py" not in matched:
+        request.scope["path"] = matched.split("?")[0]
     response = await call_next(request)
     return response
 
@@ -127,9 +126,13 @@ app.add_middleware(
 )
 
 
-# ---------------------------------------------------------------------------
-# Global error handlers — never leak stack traces to clients
-# ---------------------------------------------------------------------------
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+@app.exception_handler(StarletteHTTPException)
+async def custom_404_handler(request: Request, exc: StarletteHTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error("Unhandled exception on %s: %s", request.url.path, exc, exc_info=True)
