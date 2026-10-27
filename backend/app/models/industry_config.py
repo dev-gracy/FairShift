@@ -10,17 +10,40 @@ from typing import Dict, Any, Optional
 
 _PROFILES: Dict[str, Any] = {}
 
-_CONFIG_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "..", "..", "config", "industry_profiles.json"
-)
+_CANDIDATE_PATHS = [
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "config", "industry_profiles.json"),
+    os.path.join(os.path.dirname(__file__), "..", "..", "config", "industry_profiles.json"),
+    os.path.join(os.path.dirname(__file__), "..", "config", "industry_profiles.json"),
+    os.path.join(os.getcwd(), "config", "industry_profiles.json"),
+    os.path.join(os.getcwd(), "..", "config", "industry_profiles.json"),
+]
 
 
 def load_profiles() -> None:
     """Load industry profiles from JSON config. Called at app startup."""
     global _PROFILES
-    config_path = os.path.abspath(_CONFIG_PATH)
-    with open(config_path, "r", encoding="utf-8") as f:
-        _PROFILES = json.load(f)
+    for path in _CANDIDATE_PATHS:
+        abs_p = os.path.abspath(path)
+        if os.path.isfile(abs_p):
+            with open(abs_p, "r", encoding="utf-8") as f:
+                _PROFILES = json.load(f)
+                return
+    # If no file found, keep default minimal profiles
+    if not _PROFILES:
+        _PROFILES = {
+            "construction": {
+                "id": "construction", "name": "Construction Site",
+                "default_locale": "hi", "supported_locales": ["en", "hi", "ta"],
+                "report_threshold_k": 3,
+                "pay_structure": {"currency": "INR", "base_daily_rate": 600, "overtime_multiplier": 1.5, "overtime_threshold_hours": 8, "allowances": {"hazard": 50, "night": 75}}
+            },
+            "hospital": {
+                "id": "hospital", "name": "Hospital / Healthcare",
+                "default_locale": "ta", "supported_locales": ["en", "hi", "ta"],
+                "report_threshold_k": 3,
+                "pay_structure": {"currency": "INR", "base_daily_rate": 900, "overtime_multiplier": 2.0, "overtime_threshold_hours": 8, "allowances": {"infection_risk": 100, "oncall": 150}}
+            }
+        }
 
 
 def get_profile(industry_id: str) -> Optional[Dict[str, Any]]:

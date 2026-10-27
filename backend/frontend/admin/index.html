@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="FairShift Admin — Attendance trends, explainable risk dashboard, and anonymous surfaced reports. Switch between Construction and Hospital industries." />
+  <title>FairShift — Admin Dashboard</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    /* Admin-specific layout */
+    .admin-content { padding: var(--space-8) var(--space-6); max-width: 1100px; margin: 0 auto; }
+    .admin-section { display: none; flex-direction: column; gap: var(--space-6); }
+    .admin-section.active { display: flex; }
+
+    /* Page header */
+    .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-6); }
+    .page-header h1 { font-size: var(--text-2xl); }
+
+    /* Stats grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-4); }
+
+    /* Risk cards grid */
+    .risk-grid { display: flex; flex-direction: column; gap: var(--space-5); }
+
+    /* Reports section */
+    .reports-list { display: flex; flex-direction: column; gap: var(--space-4); }
+
+    /* Formula explanation */
+    .formula-box {
+      background: var(--color-primary-light);
+      border: 1px solid var(--color-primary);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      font-size: var(--text-sm);
+      font-family: 'Courier New', monospace;
+      line-height: 1.6;
+    }
+
+    /* Severity bar */
+    .severity-bar { display: flex; align-items: center; gap: var(--space-3); }
+    .severity-bar .score-label { font-size: var(--text-sm); font-weight: 600; min-width: 40px; }
+    .severity-bar .progress-bar { flex: 1; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: var(--space-10); color: var(--color-text-muted); }
+    .empty-state .icon { font-size: 3rem; margin-bottom: var(--space-3); }
+
+    /* Mobile nav for admin */
+    .admin-nav__mobile-toggle {
+      display: none;
+      background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer;
+      padding: var(--space-2);
+    }
+    @media (max-width: 640px) {
+      .admin-nav__links { display: none; }
+      .admin-nav__links.open { display: flex; flex-direction: column; position: absolute; top: 60px; left: 0; right: 0; background: var(--color-primary-dark); padding: var(--space-3); z-index: 100; }
+      .admin-nav__mobile-toggle { display: block; }
+      .admin-content { padding: var(--space-4); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Admin navigation -->
+  <nav class="admin-nav" role="navigation" aria-label="Admin navigation">
+    <div class="admin-nav__brand">⚖️ FairShift</div>
+
+    <div class="admin-nav__links" id="admin-nav-links" role="menubar">
+      <button class="admin-nav__link active" data-section="dashboard" role="menuitem" tabindex="0">
+        📊 Dashboard
+      </button>
+      <button class="admin-nav__link" data-section="risk" role="menuitem" tabindex="-1">
+        🔥 Risk Scores
+      </button>
+      <button class="admin-nav__link" data-section="reports" role="menuitem" tabindex="-1">
+        🚨 Reports
+      </button>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:var(--space-3); margin-left:auto;">
+      <!-- Industry switcher -->
+      <div id="industry-switcher-nav" class="industry-switcher" role="group" aria-label="Industry switcher">
+        <!-- Populated dynamically -->
+      </div>
+      <span id="admin-name" class="text-sm" style="color:rgba(255,255,255,.8)"></span>
+      <button id="logout-btn" class="app-bar__btn" aria-label="Logout">Logout</button>
+    </div>
+
+    <button class="admin-nav__mobile-toggle" id="mobile-menu-btn" aria-label="Open menu" aria-expanded="false">☰</button>
+  </nav>
+
+  <!-- Main content -->
+  <main class="admin-content" role="main">
+
+    <!-- ── DASHBOARD SECTION ─────────────────────────────────────── -->
+    <section id="section-dashboard" class="admin-section active" aria-labelledby="dashboard-heading">
+      <div class="page-header">
+        <div>
+          <h1 id="dashboard-heading">Attendance Dashboard</h1>
+          <p class="text-muted text-sm" id="dashboard-industry-label">Loading...</p>
+        </div>
+        <button id="refresh-btn" class="btn btn--ghost btn--icon" aria-label="Refresh data" style="width:auto; padding: var(--space-2) var(--space-4); font-size:var(--text-sm);">
+          🔄 Refresh
+        </button>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="stats-grid" id="stats-grid" aria-label="Attendance statistics">
+        <div class="stat-card skeleton" style="height:100px"></div>
+        <div class="stat-card skeleton" style="height:100px"></div>
+        <div class="stat-card skeleton" style="height:100px"></div>
+        <div class="stat-card skeleton" style="height:100px"></div>
+      </div>
+
+      <!-- SDG 8 alignment note -->
+      <div class="card card--highlight">
+        <h3>📌 SDG 8 — Decent Work Signal</h3>
+        <p class="text-sm text-muted" style="margin-top:var(--space-2)">
+          These metrics directly track SDG 8 Target 8.8: protecting labour rights and promoting safe working environments.
+          High overtime and unresolved reports are leading indicators of poor worker well-being.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── RISK SCORES SECTION ───────────────────────────────────── -->
+    <section id="section-risk" class="admin-section" aria-labelledby="risk-heading">
+      <div class="page-header">
+        <div>
+          <h1 id="risk-heading">Explainable Risk Scores</h1>
+          <p class="text-muted text-sm">Cohort-level scores — never individual. Each score shows exactly why it's high.</p>
+        </div>
+      </div>
+
+      <!-- Formula transparency -->
+      <div class="formula-box" role="region" aria-label="Risk score formula">
+        <strong>Score Formula (auditable):</strong><br/>
+        Score = (long_shifts × 12) + (avg_overtime × 2) + (safety_reports × 15) + (pay_delays × 10) + (pending × 1)<br/>
+        <span style="color: var(--color-text-muted)">Capped at 100. Low &lt; 30 · Medium 30–59 · High ≥ 60</span>
+      </div>
+
+      <div id="risk-cards" class="risk-grid">
+        <div class="spinner" role="status" aria-label="Loading risk scores"></div>
+      </div>
+    </section>
+
+    <!-- ── REPORTS SECTION ───────────────────────────────────────── -->
+    <section id="section-reports" class="admin-section" aria-labelledby="reports-heading">
+      <div class="page-header">
+        <div>
+          <h1 id="reports-heading">Surfaced Reports</h1>
+          <p class="text-muted text-sm">Anonymous clusters — only shown once ≥3 workers report the same issue. No individual is identified.</p>
+        </div>
+      </div>
+
+      <!-- Pending reports count (below threshold) -->
+      <div id="pending-info" class="alert alert--info" role="status">
+        Loading pending report count...
+      </div>
+
+      <div id="reports-list" class="reports-list">
+        <div class="spinner" role="status" aria-label="Loading reports"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/api.js"></script>
+  <script>
+    /* ───────────────────────────────────────────────────────────────────
+     * FairShift Admin UI
+     * ─────────────────────────────────────────────────────────────────── */
+    (async () => {
+      // Auth guard
+      if (!FS.isLoggedIn()) { FS.redirectToLogin(); return; }
+      const user = FS.getUser();
+      if (user?.role !== 'admin') { window.location.href = '/worker/index.html'; return; }
+
+      await FS.loadLocale('en');
+
+      // Display admin name
+      FS.$('#admin-name').textContent = user.name;
+      FS.$('#logout-btn').addEventListener('click', () => { if (confirm('Logout?')) FS.logout(); });
+
+      // Mobile menu toggle
+      const mobileBtn = FS.$('#mobile-menu-btn');
+      const navLinks  = FS.$('#admin-nav-links');
+      mobileBtn?.addEventListener('click', () => {
+        const open = navLinks.classList.toggle('open');
+        mobileBtn.setAttribute('aria-expanded', String(open));
+      });
+
+      // ── Industry switcher ──────────────────────────────────────────
+      let currentIndustry = user.industry_id || 'construction';
+
+      const profilesData = await FS.get('/auth/industries', false).catch(() => null);
+      const switcherEl = FS.$('#industry-switcher-nav');
+
+      if (profilesData?.industries) {
+        switcherEl.innerHTML = profilesData.industries.map(i => `
+          <button class="industry-tab${i.id === currentIndustry ? ' active' : ''}"
+                  data-industry="${i.id}"
+                  aria-pressed="${i.id === currentIndustry}">
+            ${i.id === 'construction' ? '🏗️' : '🏥'} ${i.name.split('/')[0].trim()}
+          </button>`
+        ).join('');
+
+        FS.$$('.industry-tab').forEach(btn => {
+          btn.addEventListener('click', () => {
+            currentIndustry = btn.dataset.industry;
+            FS.$$('.industry-tab').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
+            btn.classList.add('active'); btn.setAttribute('aria-pressed','true');
+            // Reload all data for new industry
+            loadDashboard();
+            loadRiskScores();
+            loadReports();
+          });
+        });
+      }
+
+      // ── Section navigation ─────────────────────────────────────────
+      let currentSection = 'dashboard';
+      const navLinks2 = FS.$$('.admin-nav__link');
+
+      function showSection(sectionId) {
+        FS.$$('.admin-section').forEach(s => s.classList.remove('active'));
+        navLinks2.forEach(l => { l.classList.remove('active'); l.tabIndex = -1; });
+        FS.$(`#section-${sectionId}`)?.classList.add('active');
+        const activeLink = FS.$(`[data-section="${sectionId}"]`);
+        if (activeLink) { activeLink.classList.add('active'); activeLink.tabIndex = 0; }
+        currentSection = sectionId;
+
+        // Lazy load on first view
+        if (sectionId === 'risk') loadRiskScores();
+        if (sectionId === 'reports') loadReports();
+      }
+
+      navLinks2.forEach((btn, i, arr) => {
+        btn.addEventListener('click', () => showSection(btn.dataset.section));
+        btn.addEventListener('keydown', e => {
+          if (e.key === 'ArrowRight') { e.preventDefault(); arr[(i+1)%arr.length].focus(); }
+          if (e.key === 'ArrowLeft')  { e.preventDefault(); arr[(i-1+arr.length)%arr.length].focus(); }
+        });
+      });
+
+      FS.$('#refresh-btn').addEventListener('click', () => {
+        loadDashboard();
+        if (currentSection === 'risk') loadRiskScores();
+        if (currentSection === 'reports') loadReports();
+        FS.toast('Data refreshed', 'info', 2000);
+      });
+
+      // ── Dashboard ──────────────────────────────────────────────────
+      async function loadDashboard() {
+        const config = await FS.getIndustryConfig(currentIndustry).catch(() => null);
+        const industryName = config?.display_name_en ?? currentIndustry;
+        FS.$('#dashboard-industry-label').textContent = `Industry: ${industryName}`;
+
+        try {
+          const data = await FS.get(`/dashboard/attendance?days=7`);
+          const grid = FS.$('#stats-grid');
+          grid.innerHTML = `
+            <div class="stat-card">
+              <div class="stat-card__value">${data.total_shifts}</div>
+              <div class="stat-card__label">Shifts (7 days)</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__value">${data.active_workers}</div>
+              <div class="stat-card__label">Active Workers</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__value">${FS.fmtHours(data.avg_shift_duration_hours)}</div>
+              <div class="stat-card__label">Avg Shift Duration</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__value" style="color: ${data.total_overtime_hours > 20 ? 'var(--color-danger)' : 'var(--color-primary)'}">
+                ${FS.fmtHours(data.total_overtime_hours)}
+              </div>
+              <div class="stat-card__label">Total Overtime</div>
+            </div>`;
+        } catch (err) {
+          FS.$('#stats-grid').innerHTML = `<div class="alert alert--danger">${err.message}</div>`;
+        }
+      }
+
+      // ── Risk scores ────────────────────────────────────────────────
+      async function loadRiskScores() {
+        const container = FS.$('#risk-cards');
+        container.innerHTML = `<div class="spinner" role="status" aria-label="Loading risk scores"></div>`;
+        try {
+          const data = await FS.get('/dashboard/risk');
+          if (!data.risk_cards?.length) {
+            container.innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>No risk data yet. Complete some shifts first.</p></div>`;
+            return;
+          }
+
+          container.innerHTML = data.risk_cards.map(card => {
+            const levelLabel = card.risk_level.charAt(0).toUpperCase() + card.risk_level.slice(1);
+            const badgeClass = { low: 'success', medium: 'warning', high: 'danger' }[card.risk_level] || 'muted';
+            const barColor   = { low: 'var(--color-risk-low)', medium: 'var(--color-risk-medium)', high: 'var(--color-risk-high)' }[card.risk_level];
+            const reasonItems = card.reasons.map(r => `<li>${r}</li>`).join('');
+
+            return `
+              <div class="risk-card risk-card--${card.risk_level}"
+                   role="article"
+                   aria-label="Risk score for site ${card.site_id}: ${card.score} out of 100, ${levelLabel} risk">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:var(--space-4)">
+                  <div>
+                    <div class="text-sm text-muted font-medium">📍 Site: ${card.site_id}</div>
+                    <div class="text-sm text-muted">${card.industry_name}</div>
+                  </div>
+                  <span class="badge badge--${badgeClass}" aria-label="Risk level: ${levelLabel}">
+                    ${levelLabel} Risk
+                  </span>
+                </div>
+
+                <div class="severity-bar" aria-label="Score: ${card.score} out of 100">
+                  <span class="risk-score-number">${card.score}</span>
+                  <div style="flex:1">
+                    <div class="progress-bar">
+                      <div class="progress-bar__fill" style="width:${card.score}%; background:${barColor};"
+                           role="progressbar" aria-valuenow="${card.score}" aria-valuemin="0" aria-valuemax="100">
+                      </div>
+                    </div>
+                    <div class="text-xs text-muted" style="margin-top:4px">out of 100</div>
+                  </div>
+                </div>
+
+                <div style="margin-top:var(--space-5)">
+                  <div class="text-sm font-bold" style="margin-bottom:var(--space-2)">
+                    Why this score:
+                  </div>
+                  <ul class="risk-reasons" aria-label="Reasons for risk score">
+                    ${reasonItems}
+                  </ul>
+                </div>
+
+                <div class="text-xs text-muted" style="margin-top:var(--space-4)">
+                  Computed at ${FS.fmtTime(data.computed_at)} — auto-refreshes
+                </div>
+              </div>`;
+          }).join('');
+        } catch (err) {
+          container.innerHTML = `<div class="alert alert--danger">${err.message}</div>`;
+        }
+      }
+
+      // ── Surfaced reports ───────────────────────────────────────────
+      async function loadReports() {
+        // Pending count
+        try {
+          const pending = await FS.get('/reports/count-pending');
+          FS.$('#pending-info').innerHTML =
+            `ℹ️ <strong>${pending.pending_count}</strong> report(s) are held silently below the anonymity threshold (k=${pending.threshold}). They will surface once enough colleagues report the same issue.`;
+        } catch { /* non-critical */ }
+
+        const container = FS.$('#reports-list');
+        container.innerHTML = `<div class="spinner" role="status" aria-label="Loading reports"></div>`;
+        try {
+          const data = await FS.get(`/reports/surfaced?industry_id=${currentIndustry}`);
+
+          if (!data.surfaced_clusters?.length) {
+            container.innerHTML = `
+              <div class="empty-state" role="status">
+                <div class="icon" aria-hidden="true">🔒</div>
+                <p>No reports have reached the anonymity threshold yet.</p>
+                <p class="text-sm" style="margin-top:var(--space-2)">Reports appear here only once ${3} or more workers independently report the same issue.</p>
+              </div>`;
+            return;
+          }
+
+          container.innerHTML = data.surfaced_clusters.map(cluster => {
+            const typeIcon = cluster.report_type === 'safety' ? '⛑️' : '📢';
+            const sampleHtml = cluster.sample_descriptions.length
+              ? `<div style="margin-top:var(--space-3)">
+                   <div class="text-sm font-bold">Sample reports:</div>
+                   <ul style="margin-top:var(--space-2); padding-left:var(--space-5)">
+                     ${cluster.sample_descriptions.map(d => `<li class="text-sm text-muted">"${d}"</li>`).join('')}
+                   </ul>
+                 </div>`
+              : '';
+
+            return `
+              <div class="report-cluster"
+                   role="article"
+                   aria-label="${cluster.report_count} ${cluster.report_type} reports for ${cluster.category}">
+                <div class="report-cluster__meta">
+                  <span class="badge badge--${cluster.report_type === 'safety' ? 'danger' : 'warning'}" aria-hidden="true">
+                    ${typeIcon} ${cluster.report_type}
+                  </span>
+                  <span class="badge badge--muted">📍 ${cluster.site_id}</span>
+                  <span class="badge badge--muted">📅 ${cluster.week}</span>
+                </div>
+
+                <div style="display:flex; align-items:baseline; gap:var(--space-4)">
+                  <div class="report-cluster__count">
+                    ${cluster.report_count}
+                    <span>independent reports</span>
+                  </div>
+                </div>
+
+                <div style="margin-top:var(--space-2)">
+                  <strong class="text-base">Category: ${cluster.category.replace(/_/g,' ')}</strong>
+                </div>
+
+                ${sampleHtml}
+
+                <div class="alert alert--info" style="margin-top:var(--space-4); font-size:var(--text-xs)">
+                  🔒 Individual identities are never stored. This cluster surfaced because the anonymity threshold was reached.
+                </div>
+              </div>`;
+          }).join('');
+        } catch (err) {
+          container.innerHTML = `<div class="alert alert--danger">${err.message}</div>`;
+        }
+      }
+
+      // ── Initial load ───────────────────────────────────────────────
+      loadDashboard();
+    })();
+  </script>
+</body>
+</html>

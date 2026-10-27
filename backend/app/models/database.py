@@ -8,7 +8,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fairshift.db")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    # On Vercel / AWS Lambda, root directory is read-only; use /tmp for SQLite
+    if os.getenv("VERCEL") or os.path.exists("/var/task"):
+        DATABASE_URL = "sqlite:////tmp/fairshift.db"
+    else:
+        DATABASE_URL = "sqlite:///./fairshift.db"
+elif DATABASE_URL.startswith("postgres://"):
+    # SQLAlchemy requires postgresql:// instead of postgres://
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # SQLite: check_same_thread=False required for multi-threaded FastAPI
 engine = create_engine(

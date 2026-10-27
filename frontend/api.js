@@ -205,12 +205,24 @@ const FS = (() => {
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   }
 
+  async function register(name, username, password, role, industryId, siteId = 'site_a', langPref = 'en') {
+    return post('/auth/register', {
+      name,
+      username,
+      password,
+      role,
+      industry_id: industryId,
+      site_id: siteId,
+      language_pref: langPref,
+    }, false);
+  }
+
   // ── Public API ─────────────────────────────────────────────────────────
   return {
     // HTTP
     get, post,
     // Auth
-    login, logout, getUser, isLoggedIn, redirectToLogin,
+    login, logout, register, getUser, isLoggedIn, redirectToLogin,
     // Locale
     loadLocale, t,
     // UI

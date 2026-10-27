@@ -1,0 +1,74 @@
+{
+  "construction": {
+    "id": "construction",
+    "name": "Construction Site",
+    "display_name_en": "Construction Site",
+    "display_name_hi": "निर्माण स्थल",
+    "display_name_ta": "கட்டுமான தளம்",
+    "shift_types": [
+      { "id": "day", "label_en": "Day Shift", "label_hi": "दिन की पाली", "label_ta": "பகல் ஷிப்ட்", "start": "06:00", "end": "14:00", "duration_hours": 8 },
+      { "id": "night", "label_en": "Night Shift", "label_hi": "रात की पाली", "label_ta": "இரவு ஷிப்ட்", "start": "22:00", "end": "06:00", "duration_hours": 8 },
+      { "id": "extended", "label_en": "Extended / Overtime", "label_hi": "ओवरटाइम", "label_ta": "கூடுதல் நேரம்", "start": "06:00", "end": "18:00", "duration_hours": 12 }
+    ],
+    "pay_structure": {
+      "currency": "INR",
+      "base_daily_rate": 600,
+      "overtime_multiplier": 1.5,
+      "overtime_threshold_hours": 8,
+      "allowances": { "hazard": 50, "night": 75 }
+    },
+    "hazard_categories": [
+      { "id": "height", "label_en": "Working at Height", "label_hi": "ऊंचाई पर काम", "label_ta": "உயரத்தில் வேலை", "icon": "🏗️" },
+      { "id": "electrical", "label_en": "Electrical Hazard", "label_hi": "बिजली का खतरा", "label_ta": "மின் அபாயம்", "icon": "⚡" },
+      { "id": "chemical", "label_en": "Chemical Exposure", "label_hi": "रासायनिक संपर्क", "label_ta": "இரசாயன தொடர்பு", "icon": "☢️" },
+      { "id": "collapse", "label_en": "Structural Collapse Risk", "label_hi": "संरचनात्मक ढहाव का खतरा", "label_ta": "கட்டமைப்பு சரிவு", "icon": "🏚️" },
+      { "id": "machinery", "label_en": "Machinery Accident", "label_hi": "मशीनरी दुर्घटना", "label_ta": "இயந்திர விபத்து", "icon": "⚙️" },
+      { "id": "other", "label_en": "Other / General", "label_hi": "अन्य", "label_ta": "மற்றவை", "icon": "⚠️" }
+    ],
+    "grievance_categories": [
+      { "id": "pay_delay", "label_en": "Pay Delay", "label_hi": "वेतन में देरी", "label_ta": "ஊதிய தாமதம்" },
+      { "id": "harassment", "label_en": "Workplace Harassment", "label_hi": "कार्यस्थल उत्पीड़न", "label_ta": "பணியிட துன்புறுத்தல்" },
+      { "id": "overwork", "label_en": "Forced Overwork", "label_hi": "जबरदस्ती ओवरटाइम", "label_ta": "கட்டாய அதிகப்படியான வேலை" },
+      { "id": "facilities", "label_en": "Poor Facilities", "label_hi": "खराब सुविधाएं", "label_ta": "மோசமான வசதிகள்" }
+    ],
+    "default_locale": "hi",
+    "supported_locales": ["en", "hi", "ta"],
+    "report_threshold_k": 3
+  },
+  "hospital": {
+    "id": "hospital",
+    "name": "Hospital / Healthcare",
+    "display_name_en": "Hospital / Healthcare",
+    "display_name_hi": "अस्पताल / स्वास्थ्य सेवा",
+    "display_name_ta": "மருத்துவமனை / சுகாதாரம்",
+    "shift_types": [
+      { "id": "morning", "label_en": "Morning Shift", "label_hi": "सुबह की पाली", "label_ta": "காலை ஷிப்ட்", "start": "07:00", "end": "15:00", "duration_hours": 8 },
+      { "id": "evening", "label_en": "Evening Shift", "label_hi": "शाम की पाली", "label_ta": "மாலை ஷிப்ட்", "start": "15:00", "end": "23:00", "duration_hours": 8 },
+      { "id": "oncall", "label_en": "On-Call", "label_hi": "ऑन-कॉल", "label_ta": "ஆன்-கால்", "start": "23:00", "end": "07:00", "duration_hours": 8 }
+    ],
+    "pay_structure": {
+      "currency": "INR",
+      "base_daily_rate": 900,
+      "overtime_multiplier": 2.0,
+      "overtime_threshold_hours": 8,
+      "allowances": { "infection_risk": 100, "oncall": 150 }
+    },
+    "hazard_categories": [
+      { "id": "infection", "label_en": "Infection Risk", "label_hi": "संक्रमण का खतरा", "label_ta": "தொற்று அபாயம்", "icon": "🦠" },
+      { "id": "chemical", "label_en": "Chemical / Drug Exposure", "label_hi": "रासायनिक/दवा संपर्क", "label_ta": "இரசாயன தொடர்பு", "icon": "💊" },
+      { "id": "ergonomic", "label_en": "Ergonomic / Lifting", "label_hi": "एर्गोनॉमिक खतरा", "label_ta": "எர்கோனமிக் அபாயம்", "icon": "🦴" },
+      { "id": "violence", "label_en": "Patient / Visitor Violence", "label_hi": "हिंसा का खतरा", "label_ta": "வன்முறை அபாயம்", "icon": "🚨" },
+      { "id": "radiation", "label_en": "Radiation Exposure", "label_hi": "विकिरण संपर्क", "label_ta": "கதிர்வீச்சு தொடர்பு", "icon": "☢️" },
+      { "id": "other", "label_en": "Other / General", "label_hi": "अन्य", "label_ta": "மற்றவை", "icon": "⚠️" }
+    ],
+    "grievance_categories": [
+      { "id": "pay_delay", "label_en": "Pay Delay", "label_hi": "वेतन में देरी", "label_ta": "ஊதிய தாமதம்" },
+      { "id": "harassment", "label_en": "Workplace Harassment", "label_hi": "कार्यस्थल उत्पीड़न", "label_ta": "பணியிட துன்புறுத்தல்" },
+      { "id": "unsafe_ppe", "label_en": "Inadequate PPE / Equipment", "label_hi": "अपर्याप्त सुरक्षा उपकरण", "label_ta": "போதுமான PPE இல்லை" },
+      { "id": "scheduling", "label_en": "Unfair Scheduling", "label_hi": "अनुचित शेड्यूलिंग", "label_ta": "நியாயமற்ற அட்டவணை" }
+    ],
+    "default_locale": "ta",
+    "supported_locales": ["en", "hi", "ta"],
+    "report_threshold_k": 3
+  }
+}

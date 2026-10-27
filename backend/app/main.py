@@ -28,8 +28,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
-from app.models.database import engine
-from app.models.models import Base
+from app.models.database import engine, SessionLocal
+from app.models.models import Base, User
 from app.models.industry_config import load_profiles
 from app.routers import auth, shifts, reports, dashboard, config_routes
 
@@ -53,6 +53,21 @@ async def lifespan(app: FastAPI):
     logger.info("FairShift starting up (env=%s)", APP_ENV)
     Base.metadata.create_all(bind=engine)
     load_profiles()
+
+    # If database has no users (e.g. fresh ephemeral SQLite in /tmp on Vercel), auto-seed demo data
+    try:
+        with SessionLocal() as db:
+            if not db.query(User).first():
+                logger.info("Empty database detected — auto-seeding demo accounts...")
+                try:
+                    from seed import seed
+                    seed()
+                    logger.info("Auto-seed finished successfully.")
+                except Exception as seed_err:
+                    logger.warning("Auto-seed error: %s", seed_err)
+    except Exception as db_err:
+        logger.warning("Database check warning: %s", db_err)
+
     logger.info("Database tables verified. Industry profiles loaded.")
     yield
     logger.info("FairShift shutting down.")
@@ -143,6 +158,12 @@ def health():
 # Static files — serve the frontend
 # Must be mounted AFTER API routes to avoid catch-all conflicts
 # ---------------------------------------------------------------------------
-_FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
-if os.path.isdir(_FRONTEND_DIR):
+_FRONTEND_CANDIDATES = [
+    os.path.join(os.path.dirname(__file__), "..", "..", "frontend"),
+    os.path.join(os.path.dirname(__file__), "..", "frontend"),
+    os.path.join(os.getcwd(), "frontend"),
+    os.path.join(os.getcwd(), "..", "frontend"),
+]
+_FRONTEND_DIR = next((d for d in _FRONTEND_CANDIDATES if os.path.isdir(d)), None)
+if _FRONTEND_DIR:
     app.mount("/", StaticFiles(directory=_FRONTEND_DIR, html=True), name="frontend")

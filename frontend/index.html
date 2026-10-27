@@ -9,6 +9,8 @@
   <style>
     body { min-height: 100dvh; display: flex; flex-direction: column; }
     .login-wrapper { flex: 1; display: flex; flex-direction: column; }
+
+    /* Language selector */
     .lang-selector {
       position: absolute; top: 16px; right: 16px;
       background: rgba(255,255,255,.15);
@@ -17,9 +19,31 @@
       color: #fff; padding: 6px 10px;
       font-family: var(--font-base); font-size: var(--text-sm); cursor: pointer;
     }
+
+    /* Main mode tabs: Login / Create Account */
+    .mode-tabs {
+      display: flex; border-bottom: 2px solid var(--color-border);
+      margin-bottom: var(--space-5);
+    }
+    .mode-tab {
+      flex: 1; padding: var(--space-3) var(--space-4);
+      border: none; background: transparent;
+      font-family: var(--font-base); font-size: var(--text-sm);
+      font-weight: 700; cursor: pointer; color: var(--color-text-muted);
+      border-bottom: 3px solid transparent; margin-bottom: -2px;
+      transition: all var(--transition-fast);
+    }
+    .mode-tab.active {
+      color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+    }
+
+    /* Role tabs (inside login/register panels) */
     .role-tabs { display: flex; gap: 0; border: 2px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
     .role-tab { flex: 1; padding: var(--space-3); border: none; background: var(--color-bg); font-family: var(--font-base); font-size: var(--text-sm); font-weight: 600; cursor: pointer; transition: all var(--transition-fast); }
     .role-tab.active { background: var(--color-primary); color: #fff; }
+
+    /* SDG badge */
     .sdg-badge {
       display: inline-flex; align-items: center; gap: 6px;
       background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
@@ -29,6 +53,53 @@
     }
     .demo-hint { font-size: var(--text-xs); color: var(--color-text-muted); text-align: center; margin-top: var(--space-2); }
     .hero-relative { position: relative; }
+
+    /* Panels */
+    .auth-panel { display: none; }
+    .auth-panel.active { display: block; }
+
+    /* Password strength meter */
+    .pwd-strength { margin-top: var(--space-2); }
+    .pwd-strength-bar {
+      height: 4px; border-radius: 2px; background: var(--color-border);
+      overflow: hidden; margin-bottom: 4px;
+    }
+    .pwd-strength-fill {
+      height: 100%; width: 0%; border-radius: 2px;
+      transition: width .3s, background .3s;
+    }
+    .pwd-strength-label { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+    /* Input with icon */
+    .input-row { position: relative; }
+    .input-row .input { padding-right: 2.5rem; }
+    .pwd-toggle {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; font-size: 1.1rem;
+      padding: 4px; color: var(--color-text-muted);
+    }
+
+    /* Success state */
+    .register-success {
+      text-align: center; padding: var(--space-6);
+      display: none; flex-direction: column; align-items: center; gap: var(--space-3);
+    }
+    .register-success.active { display: flex; }
+    .success-icon { font-size: 3rem; }
+    .success-title { font-size: var(--text-xl); font-weight: 800; color: var(--color-success); }
+    .success-sub { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+    /* Row layout for two-col fields */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+    @media (max-width: 400px) { .form-row { grid-template-columns: 1fr; } }
+
+    /* Admin note */
+    .admin-note {
+      background: #fff8e1; border: 1px solid #ffe082; border-radius: var(--radius-md);
+      padding: var(--space-3); font-size: var(--text-xs); color: #795548;
+      display: none; margin-top: var(--space-2);
+    }
+    .admin-note.visible { display: block; }
   </style>
 </head>
 <body>
@@ -46,166 +117,395 @@
       <div class="sdg-badge">🎯 UN SDG 8 — Decent Work &amp; Economic Growth</div>
     </div>
 
-    <!-- Login Form -->
+    <!-- Auth form -->
     <div class="login-form">
-      <!-- Industry selector -->
-      <div class="form-group">
-        <label class="label" for="industry-select" id="lbl-industry">Select Industry / Site</label>
-        <select id="industry-select" class="select" aria-required="true">
-          <option value="">Loading...</option>
-        </select>
+
+      <!-- Mode tabs: Login / Create Account -->
+      <div class="mode-tabs" role="tablist" aria-label="Authentication mode">
+        <button id="tab-login" class="mode-tab active" role="tab" aria-selected="true" aria-controls="panel-login">
+          🔑 Login
+        </button>
+        <button id="tab-register" class="mode-tab" role="tab" aria-selected="false" aria-controls="panel-register">
+          ✨ Create Account
+        </button>
       </div>
 
-      <!-- Role tabs -->
-      <div class="form-group">
-        <div class="role-tabs" role="tablist" aria-label="Login as">
-          <button id="tab-worker" class="role-tab active" role="tab" aria-selected="true" aria-controls="login-panel">
-            👷 Worker
-          </button>
-          <button id="tab-admin" class="role-tab" role="tab" aria-selected="false" aria-controls="login-panel">
-            🧑‍💼 Admin
-          </button>
+      <!-- ── LOGIN PANEL ─────────────────────────────────────────── -->
+      <div id="panel-login" class="auth-panel active" role="tabpanel" aria-labelledby="tab-login">
+
+        <!-- Industry selector -->
+        <div class="form-group">
+          <label class="label" for="login-industry">Select Industry / Site</label>
+          <select id="login-industry" class="select" aria-required="true">
+            <option value="">Loading...</option>
+          </select>
         </div>
+
+        <!-- Role tabs -->
+        <div class="form-group">
+          <div class="role-tabs" role="tablist" aria-label="Login as">
+            <button id="login-tab-worker" class="role-tab active" role="tab" aria-selected="true">
+              👷 Worker
+            </button>
+            <button id="login-tab-admin" class="role-tab" role="tab" aria-selected="false">
+              🧑‍💼 Admin
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="label" for="login-username">Username</label>
+          <input id="login-username" type="text" class="input" autocomplete="username"
+                 aria-required="true" placeholder="Enter username" />
+        </div>
+
+        <div class="form-group">
+          <label class="label" for="login-password">Password</label>
+          <div class="input-row">
+            <input id="login-password" type="password" class="input" autocomplete="current-password"
+                   aria-required="true" placeholder="Enter password" />
+            <button type="button" class="pwd-toggle" id="login-pwd-toggle" aria-label="Show/hide password">👁</button>
+          </div>
+        </div>
+
+        <div id="login-error" class="alert alert--danger hidden" role="alert" aria-live="polite"></div>
+
+        <button id="login-btn" class="btn btn--primary btn--full" type="button">Login</button>
+
+        <p class="demo-hint" id="demo-hint">
+          Demo: Worker → <strong>raju_worker</strong> | Admin → <strong>const_admin</strong>
+        </p>
       </div>
 
-      <!-- Username -->
-      <div class="form-group">
-        <label class="label" for="username" id="lbl-username">Username</label>
-        <input id="username" type="text" class="input" autocomplete="username"
-               aria-required="true" aria-labelledby="lbl-username" placeholder="Enter username" />
+      <!-- ── REGISTER PANEL ──────────────────────────────────────── -->
+      <div id="panel-register" class="auth-panel" role="tabpanel" aria-labelledby="tab-register">
+
+        <!-- Success screen (shown after registration) -->
+        <div id="register-success" class="register-success">
+          <div class="success-icon">🎉</div>
+          <div class="success-title">Account Created!</div>
+          <p class="success-sub" id="success-sub">Logging you in…</p>
+        </div>
+
+        <!-- Registration form -->
+        <form id="register-form" novalidate>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="label" for="reg-name">Full Name</label>
+              <input id="reg-name" type="text" class="input" autocomplete="name"
+                     placeholder="e.g. Raju Kumar" aria-required="true" />
+            </div>
+            <div class="form-group">
+              <label class="label" for="reg-username">Username</label>
+              <input id="reg-username" type="text" class="input" autocomplete="username"
+                     placeholder="e.g. raju_k" aria-required="true" />
+            </div>
+          </div>
+
+          <!-- Industry -->
+          <div class="form-group">
+            <label class="label" for="reg-industry">Industry / Site</label>
+            <select id="reg-industry" class="select" aria-required="true">
+              <option value="">Loading…</option>
+            </select>
+          </div>
+
+          <!-- Role -->
+          <div class="form-group">
+            <label class="label">I am a…</label>
+            <div class="role-tabs" role="group" aria-label="Select role">
+              <button type="button" id="reg-tab-worker" class="role-tab active" data-role="worker">
+                👷 Worker
+              </button>
+              <button type="button" id="reg-tab-admin" class="role-tab" data-role="admin">
+                🧑‍💼 Admin / Manager
+              </button>
+            </div>
+            <div id="admin-note" class="admin-note">
+              ℹ️ Admin accounts require approval by your organisation. For demo purposes, registration is open.
+            </div>
+          </div>
+
+          <!-- Language preference -->
+          <div class="form-group">
+            <label class="label" for="reg-lang">Preferred Language</label>
+            <select id="reg-lang" class="select">
+              <option value="en">English</option>
+              <option value="hi">हिन्दी (Hindi)</option>
+              <option value="ta">தமிழ் (Tamil)</option>
+            </select>
+          </div>
+
+          <!-- Password -->
+          <div class="form-group">
+            <label class="label" for="reg-password">Password</label>
+            <div class="input-row">
+              <input id="reg-password" type="password" class="input" autocomplete="new-password"
+                     placeholder="Min. 8 characters" aria-required="true" />
+              <button type="button" class="pwd-toggle" id="reg-pwd-toggle" aria-label="Show/hide password">👁</button>
+            </div>
+            <div class="pwd-strength">
+              <div class="pwd-strength-bar"><div class="pwd-strength-fill" id="pwd-fill"></div></div>
+              <span class="pwd-strength-label" id="pwd-label"></span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="label" for="reg-confirm">Confirm Password</label>
+            <input id="reg-confirm" type="password" class="input" autocomplete="new-password"
+                   placeholder="Repeat password" aria-required="true" />
+          </div>
+
+          <div id="register-error" class="alert alert--danger hidden" role="alert" aria-live="polite"></div>
+
+          <button id="register-btn" type="submit" class="btn btn--primary btn--full">
+            Create Account
+          </button>
+
+          <p class="demo-hint" style="margin-top:var(--space-3)">
+            Already have an account? <a href="#" id="switch-to-login" style="color:var(--color-primary);font-weight:700;">Sign in →</a>
+          </p>
+        </form>
       </div>
 
-      <!-- Password -->
-      <div class="form-group">
-        <label class="label" for="password" id="lbl-password">Password</label>
-        <input id="password" type="password" class="input" autocomplete="current-password"
-               aria-required="true" aria-labelledby="lbl-password" placeholder="Enter password" />
-      </div>
-
-      <!-- Error message -->
-      <div id="login-error" class="alert alert--danger hidden" role="alert" aria-live="polite"></div>
-
-      <!-- Submit -->
-      <button id="login-btn" class="btn btn--primary btn--full" type="button">
-        Login
-      </button>
-
-      <!-- Demo hints -->
-      <p class="demo-hint" id="demo-hint">
-        Demo: Worker → <strong>raju_worker</strong> | Admin → <strong>const_admin</strong>
-      </p>
-    </div>
-  </div>
+    </div><!-- /login-form -->
+  </div><!-- /login-wrapper -->
 
   <script src="/api.js"></script>
   <script>
-    (async () => {
-      // Redirect if already logged in
-      if (FS.isLoggedIn()) {
-        const user = FS.getUser();
-        window.location.href = user?.role === 'admin' ? '/admin/index.html' : '/worker/index.html';
-        return;
+  (async () => {
+    // Redirect if already logged in
+    if (FS.isLoggedIn()) {
+      const user = FS.getUser();
+      window.location.href = user?.role === 'admin' ? '/admin/index.html' : '/worker/index.html';
+      return;
+    }
+
+    await FS.loadLocale('en');
+
+    // ── Load industries into both selects ──────────────────────────
+    const industriesData = await FS.get('/auth/industries', false).catch(() => null);
+    const industries = industriesData?.industries ?? [];
+
+    function populateIndustrySelect(sel) {
+      if (!industries.length) return;
+      sel.innerHTML = industries.map(i =>
+        `<option value="${i.id}">${i.name}</option>`
+      ).join('');
+    }
+    populateIndustrySelect(FS.$('#login-industry'));
+    populateIndustrySelect(FS.$('#reg-industry'));
+
+    // ── Language switcher ──────────────────────────────────────────
+    const langSelect = FS.$('#lang-select');
+    langSelect.addEventListener('change', async () => {
+      await FS.loadLocale(langSelect.value);
+      FS.$('#hero-tagline').textContent = FS.t('tagline');
+      FS.$('#reg-lang').value = langSelect.value;
+    });
+
+    // ── Mode tab switching ─────────────────────────────────────────
+    const tabLogin    = FS.$('#tab-login');
+    const tabRegister = FS.$('#tab-register');
+    const panelLogin  = FS.$('#panel-login');
+    const panelReg    = FS.$('#panel-register');
+
+    function showPanel(mode) {
+      if (mode === 'login') {
+        tabLogin.classList.add('active');    tabLogin.setAttribute('aria-selected','true');
+        tabRegister.classList.remove('active'); tabRegister.setAttribute('aria-selected','false');
+        panelLogin.classList.add('active');  panelReg.classList.remove('active');
+      } else {
+        tabRegister.classList.add('active'); tabRegister.setAttribute('aria-selected','true');
+        tabLogin.classList.remove('active'); tabLogin.setAttribute('aria-selected','false');
+        panelReg.classList.add('active');    panelLogin.classList.remove('active');
       }
+    }
 
-      // Load default locale
-      await FS.loadLocale('en');
+    tabLogin.addEventListener('click',    () => showPanel('login'));
+    tabRegister.addEventListener('click', () => showPanel('register'));
+    FS.$('#switch-to-login').addEventListener('click', e => { e.preventDefault(); showPanel('login'); });
 
-      // Load industries
-      const industriesData = await FS.get('/auth/industries', false).catch(() => null);
-      const industrySelect = FS.$('#industry-select');
-      if (industriesData?.industries) {
-        industrySelect.innerHTML = industriesData.industries.map(i =>
-          `<option value="${i.id}">${i.name}</option>`
-        ).join('');
-      }
+    // ── Login: role tabs ───────────────────────────────────────────
+    let loginRole = 'worker';
+    const loginIndustry = FS.$('#login-industry');
+    const demoHintEl = FS.$('#demo-hint');
 
-      // Language switcher
-      const langSelect = FS.$('#lang-select');
-      const demoHints = {
-        construction: {
-          worker: 'raju_worker',
-          admin: 'const_admin',
-        },
-        hospital: {
-          worker: 'meena_worker',
-          admin: 'hospital_admin',
-        },
-      };
+    const demoHints = {
+      construction: { worker: 'raju_worker', admin: 'const_admin' },
+      hospital:     { worker: 'meena_worker', admin: 'hospital_admin' },
+    };
 
-      langSelect.addEventListener('change', async () => {
-        const lang = langSelect.value;
-        await FS.loadLocale(lang);
-        FS.$('#hero-tagline').textContent = FS.t('tagline');
-      });
+    function updateDemoHint() {
+      const ind = loginIndustry.value || 'construction';
+      const hints = demoHints[ind] || demoHints.construction;
+      const pwd = loginRole === 'worker' ? 'WorkerPass@2026' : 'AdminPass@2026';
+      const user = loginRole === 'worker' ? hints.worker : hints.admin;
+      demoHintEl.innerHTML = `Demo: <strong>${user}</strong> / <strong>${pwd}</strong>`;
+    }
 
-      // Role tab switching
-      let selectedRole = 'worker';
-      const tabWorker = FS.$('#tab-worker');
-      const tabAdmin  = FS.$('#tab-admin');
-      const demoHint  = FS.$('#demo-hint');
-
-      function updateDemoHint() {
-        const industry = industrySelect.value || 'construction';
-        const hints = demoHints[industry] || demoHints.construction;
-        const pwd = 'WorkerPass@2026';
-        const adminPwd = 'AdminPass@2026';
-        if (selectedRole === 'worker') {
-          demoHint.innerHTML = `Demo: <strong>${hints.worker}</strong> / <strong>${pwd}</strong>`;
-        } else {
-          demoHint.innerHTML = `Demo: <strong>${hints.admin}</strong> / <strong>${adminPwd}</strong>`;
-        }
-      }
-
-      tabWorker.addEventListener('click', () => {
-        selectedRole = 'worker';
-        tabWorker.classList.add('active'); tabWorker.setAttribute('aria-selected','true');
-        tabAdmin.classList.remove('active'); tabAdmin.setAttribute('aria-selected','false');
-        updateDemoHint();
-      });
-
-      tabAdmin.addEventListener('click', () => {
-        selectedRole = 'admin';
-        tabAdmin.classList.add('active'); tabAdmin.setAttribute('aria-selected','true');
-        tabWorker.classList.remove('active'); tabWorker.setAttribute('aria-selected','false');
-        updateDemoHint();
-      });
-
-      industrySelect.addEventListener('change', updateDemoHint);
+    FS.$('#login-tab-worker').addEventListener('click', () => {
+      loginRole = 'worker';
+      FS.$('#login-tab-worker').classList.add('active');
+      FS.$('#login-tab-admin').classList.remove('active');
       updateDemoHint();
+    });
+    FS.$('#login-tab-admin').addEventListener('click', () => {
+      loginRole = 'admin';
+      FS.$('#login-tab-admin').classList.add('active');
+      FS.$('#login-tab-worker').classList.remove('active');
+      updateDemoHint();
+    });
+    loginIndustry.addEventListener('change', updateDemoHint);
+    updateDemoHint();
 
-      // Login
-      const loginBtn = FS.$('#login-btn');
-      const errorEl  = FS.$('#login-error');
+    // Password toggle (login)
+    FS.$('#login-pwd-toggle').addEventListener('click', () => {
+      const inp = FS.$('#login-password');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
 
-      async function doLogin() {
-        const username = FS.$('#username').value.trim();
-        const password = FS.$('#password').value;
+    // ── Login submit ───────────────────────────────────────────────
+    const loginBtn   = FS.$('#login-btn');
+    const loginError = FS.$('#login-error');
 
-        FS.hide(errorEl);
-        if (!username || !password) {
-          errorEl.textContent = 'Please enter username and password.';
-          FS.show(errorEl); return;
-        }
+    async function doLogin() {
+      const username = FS.$('#login-username').value.trim();
+      const password = FS.$('#login-password').value;
+      FS.hide(loginError);
+      if (!username || !password) {
+        loginError.textContent = 'Please enter username and password.';
+        FS.show(loginError); return;
+      }
+      FS.setLoading(loginBtn, true, 'Login');
+      try {
+        const data = await FS.login(username, password);
+        window.location.href = data.role === 'admin' ? '/admin/index.html' : '/worker/index.html';
+      } catch (err) {
+        loginError.textContent = err.message || 'Login failed. Check credentials.';
+        FS.show(loginError);
+      } finally {
+        FS.setLoading(loginBtn, false, 'Login');
+      }
+    }
+    loginBtn.addEventListener('click', doLogin);
+    FS.$('#login-password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+    FS.$('#login-username').addEventListener('keydown', e => { if (e.key === 'Enter') FS.$('#login-password').focus(); });
 
-        FS.setLoading(loginBtn, true, 'Login');
-        try {
-          const data = await FS.login(username, password);
-          const dest = data.role === 'admin' ? '/admin/index.html' : '/worker/index.html';
-          window.location.href = dest;
-        } catch (err) {
-          errorEl.textContent = err.message || 'Login failed. Check credentials.';
-          FS.show(errorEl);
-        } finally {
-          FS.setLoading(loginBtn, false, 'Login');
-        }
+    // ── Register: role tabs ────────────────────────────────────────
+    let regRole = 'worker';
+    FS.$('#reg-tab-worker').addEventListener('click', () => {
+      regRole = 'worker';
+      FS.$('#reg-tab-worker').classList.add('active');
+      FS.$('#reg-tab-admin').classList.remove('active');
+      FS.$('#admin-note').classList.remove('visible');
+    });
+    FS.$('#reg-tab-admin').addEventListener('click', () => {
+      regRole = 'admin';
+      FS.$('#reg-tab-admin').classList.add('active');
+      FS.$('#reg-tab-worker').classList.remove('active');
+      FS.$('#admin-note').classList.add('visible');
+    });
+
+    // Password toggle (register)
+    FS.$('#reg-pwd-toggle').addEventListener('click', () => {
+      const inp = FS.$('#reg-password');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
+
+    // Password strength meter
+    const pwdFill  = FS.$('#pwd-fill');
+    const pwdLabel = FS.$('#pwd-label');
+
+    function calcStrength(pwd) {
+      let score = 0;
+      if (pwd.length >= 8)  score++;
+      if (pwd.length >= 12) score++;
+      if (/[A-Z]/.test(pwd)) score++;
+      if (/[0-9]/.test(pwd)) score++;
+      if (/[^A-Za-z0-9]/.test(pwd)) score++;
+      return score; // 0-5
+    }
+
+    const strengthLabels = ['', 'Very weak', 'Weak', 'Fair', 'Strong', 'Very strong'];
+    const strengthColors = ['', '#ef4444', '#f97316', '#eab308', '#22c55e', '#16a34a'];
+
+    FS.$('#reg-password').addEventListener('input', e => {
+      const s = calcStrength(e.target.value);
+      pwdFill.style.width  = `${(s / 5) * 100}%`;
+      pwdFill.style.background = strengthColors[s] || 'var(--color-border)';
+      pwdLabel.textContent = e.target.value ? strengthLabels[s] : '';
+    });
+
+    // ── Register submit ────────────────────────────────────────────
+    const registerBtn   = FS.$('#register-btn');
+    const registerError = FS.$('#register-error');
+    const registerForm  = FS.$('#register-form');
+    const successPanel  = FS.$('#register-success');
+    const successSub    = FS.$('#success-sub');
+
+    async function doRegister(e) {
+      e.preventDefault();
+      FS.hide(registerError);
+
+      const name      = FS.$('#reg-name').value.trim();
+      const username  = FS.$('#reg-username').value.trim();
+      const password  = FS.$('#reg-password').value;
+      const confirm   = FS.$('#reg-confirm').value;
+      const industryId = FS.$('#reg-industry').value;
+      const langPref  = FS.$('#reg-lang').value;
+
+      // Validate
+      if (!name || !username || !password || !industryId) {
+        registerError.textContent = 'Please fill in all required fields.';
+        FS.show(registerError); return;
+      }
+      if (username.length < 3) {
+        registerError.textContent = 'Username must be at least 3 characters.';
+        FS.show(registerError); return;
+      }
+      if (!/^[a-z0-9_]+$/i.test(username)) {
+        registerError.textContent = 'Username can only contain letters, numbers and underscores.';
+        FS.show(registerError); return;
+      }
+      if (password.length < 8) {
+        registerError.textContent = 'Password must be at least 8 characters.';
+        FS.show(registerError); return;
+      }
+      if (password !== confirm) {
+        registerError.textContent = 'Passwords do not match.';
+        FS.show(registerError); return;
       }
 
-      loginBtn.addEventListener('click', doLogin);
+      FS.setLoading(registerBtn, true, 'Create Account');
+      try {
+        await FS.register(name, username, password, regRole, industryId, 'site_a', langPref);
 
-      // Allow Enter key to submit
-      FS.$('#password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-      FS.$('#username').addEventListener('keydown', e => { if (e.key === 'Enter') FS.$('#password').focus(); });
-    })();
+        // Show success, then auto-login
+        registerForm.style.display = 'none';
+        successPanel.classList.add('active');
+        successSub.textContent = `Welcome, ${name}! Signing you in…`;
+
+        // Auto-login
+        await FS.loadLocale(langPref);
+        const loginData = await FS.login(username, password);
+        window.location.href = loginData.role === 'admin' ? '/admin/index.html' : '/worker/index.html';
+
+      } catch (err) {
+        FS.show(registerError);
+        registerError.textContent = err.message || 'Registration failed. Try a different username.';
+        registerForm.style.display = '';
+        successPanel.classList.remove('active');
+      } finally {
+        FS.setLoading(registerBtn, false, 'Create Account');
+      }
+    }
+
+    registerForm.addEventListener('submit', doRegister);
+    registerBtn.addEventListener('click', doRegister);
+
+  })();
   </script>
 </body>
 </html>

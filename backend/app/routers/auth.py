@@ -35,7 +35,7 @@ class LoginResponse(BaseModel):
 
 
 class RegisterRequest(BaseModel):
-    name: str
+    name: str                           # display name
     username: str
     password: str
     role: str              # "worker" | "admin"
@@ -63,7 +63,19 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/register")
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
-    """Register a new user. In production this would be admin-only."""
+    """Self-service user registration. Open for demo; in production gate this behind invite tokens."""
+    import re
+
+    # --- Input validation ---
+    if len(req.username) < 3:
+        raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
+    if not re.match(r'^[a-zA-Z0-9_]+$', req.username):
+        raise HTTPException(status_code=400, detail="Username can only contain letters, numbers and underscores")
+    if len(req.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if not req.name or not req.name.strip():
+        raise HTTPException(status_code=400, detail="Full name is required")
+
     # Validate industry
     if not get_profile(req.industry_id):
         valid = list(get_all_profiles().keys())
@@ -88,7 +100,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     )
     db.add(user)
     db.commit()
-    return {"message": "User created", "user_id": user.id, "role": user.role}
+    return {"message": "User created", "user_id": user.id, "role": user.role, "username": user.name}
 
 
 @router.get("/me")
