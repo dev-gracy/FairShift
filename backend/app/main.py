@@ -90,9 +90,17 @@ app = FastAPI(
 
 @app.middleware("http")
 async def restore_vercel_path(request: Request, call_next):
-    matched = request.headers.get("x-matched-path")
-    if matched and "index.py" not in matched:
-        request.scope["path"] = matched.split("?")[0]
+    path_param = request.query_params.get("path")
+    if path_param:
+        clean = path_param.lstrip("/")
+        if not clean.startswith("api/"):
+            request.scope["path"] = f"/api/{clean}"
+        else:
+            request.scope["path"] = f"/{clean}"
+    else:
+        matched = request.headers.get("x-matched-path")
+        if matched and "index.py" not in matched:
+            request.scope["path"] = matched.split("?")[0]
     response = await call_next(request)
     return response
 
