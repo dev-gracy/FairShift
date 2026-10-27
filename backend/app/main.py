@@ -126,6 +126,8 @@ app.add_middleware(
 )
 
 
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 @app.exception_handler(StarletteHTTPException)
 async def custom_404_handler(request: Request, exc: StarletteHTTPException):
     route_paths = []
