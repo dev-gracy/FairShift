@@ -1,55 +1,12 @@
 {
-  "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "backend/app/main.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "backend/app/main.py"
+      "source": "/api/(.*)",
+      "destination": "/backend/app/main.py"
     },
     {
-      "src": "/health",
-      "dest": "backend/app/main.py"
-    },
-    {
-      "src": "/worker/(.*)",
-      "dest": "/public/worker/$1"
-    },
-    {
-      "src": "/worker",
-      "dest": "/public/worker/index.html"
-    },
-    {
-      "src": "/admin/(.*)",
-      "dest": "/public/admin/$1"
-    },
-    {
-      "src": "/admin",
-      "dest": "/public/admin/index.html"
-    },
-    {
-      "src": "/locales/(.*)",
-      "dest": "/public/locales/$1"
-    },
-    {
-      "src": "/style.css",
-      "dest": "/public/style.css"
-    },
-    {
-      "src": "/api.js",
-      "dest": "/public/api.js"
-    },
-    {
-      "src": "/",
-      "dest": "/public/index.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "backend/app/main.py"
+      "source": "/health",
+      "destination": "/backend/app/main.py"
     }
   ]
 }
