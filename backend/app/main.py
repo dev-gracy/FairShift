@@ -108,17 +108,12 @@ async def security_headers(request: Request, call_next):
 # ---------------------------------------------------------------------------
 # CORS — locked to same origin in production
 # ---------------------------------------------------------------------------
-_ALLOWED_ORIGINS = (
-    ["*"] if IS_DEV
-    else [os.getenv("ALLOWED_ORIGIN", "https://your-service.run.app")]
-)
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_ALLOWED_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],   # Minimal surface: no PUT/DELETE/PATCH needed
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -135,10 +130,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # ---------------------------------------------------------------------------
+# API routers (versioned under /api/v1, /v1, and root for serverless path stripping)
 # ---------------------------------------------------------------------------
-# API routers (versioned under /api/v1 and /v1 for serverless path stripping)
-# ---------------------------------------------------------------------------
-for prefix in ["/api/v1", "/v1"]:
+for prefix in ["/api/v1", "/v1", ""]:
     app.include_router(auth.router, prefix=prefix)
     app.include_router(shifts.router, prefix=prefix)
     app.include_router(reports.router, prefix=prefix)
@@ -151,6 +145,7 @@ for prefix in ["/api/v1", "/v1"]:
 # ---------------------------------------------------------------------------
 @app.get("/health", tags=["ops"])
 @app.get("/api/health", tags=["ops"])
+@app.get("/api/v1/health", tags=["ops"])
 def health():
     return {"status": "ok", "service": "fairshift", "version": "1.0.0"}
 
